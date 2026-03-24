@@ -9,16 +9,16 @@ class UsuarioLogin(BaseModel):
     email: str
     senha: str
     
-# Como os dados do usuário vão aparecer no Perfil do App (sem a senha!)
 class UsuarioPerfil(BaseModel):
     id: int
     nome: str
     email: str
     pontuacao: int
+    foto_perfil: str | None = None 
 
     class Config:
-        from_attributes = True # Isso ajuda o FastAPI a ler direto do banco de dados
-        
+        from_attributes = True
+               
 # O que o React vai enviar quando o usuário preencher o formulário de denúncia
 class DenunciaCriar(BaseModel):
     titulo: str

@@ -8,6 +8,11 @@ from jwt.exceptions import InvalidTokenError
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi.staticfiles import StaticFiles
+import os
+import shutil
+
 import jwt
 from datetime import datetime, timedelta, timezone
 
@@ -19,6 +24,13 @@ import schemas
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="EcoMonitor API")
+
+# Cria a pasta 'uploads' se ela não existir
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
+
+# "Libera" a pasta uploads para a internet ver as fotos
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # --- CONFIGURAÇÃO DO CORS (A Ponte entre o React e o Backend) ---
 # Permite que o frontend converse com a nossa API sem ser bloqueado pelo navegador
@@ -157,3 +169,28 @@ def listar_minhas_denuncias(
     # Vai no banco e busca só as denúncias que tem o ID do usuário logado
     denuncias = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == usuario_atual.id).all()
     return denuncias
+
+# 10. ROTA PARA SUBIR FOTO DE PERFIL 📸 (Protegida! 🛡️)
+@app.post("/perfil/foto")
+def upload_foto(
+    foto: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+):
+    # 1. Pega a extensão da imagem (ex: .png, .jpg)
+    extensao = foto.filename.split(".")[-1]
+    
+    # 2. Cria um nome único para a foto (ex: foto_perfil_1.png)
+    nome_arquivo = f"foto_perfil_{usuario_atual.id}.{extensao}"
+    caminho_completo = f"uploads/{nome_arquivo}"
+
+    # 3. Salva o arquivo fisicamente na pasta 'uploads'
+    with open(caminho_completo, "wb") as buffer:
+        shutil.copyfileobj(foto.file, buffer)
+
+    # 4. Salva o link da foto no banco de dados do usuário
+    url_foto = f"http://localhost:8000/{caminho_completo}"
+    usuario_atual.foto_perfil = url_foto
+    db.commit()
+
+    return {"mensagem": "Foto salva com sucesso!", "foto_perfil": url_foto}
