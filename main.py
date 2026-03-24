@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
+from fastapi.security import OAuth2PasswordBearer
+from jwt.exceptions import InvalidTokenError
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
 import jwt
 from datetime import datetime, timedelta, timezone
 
@@ -60,19 +64,51 @@ def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
 SECRET_KEY = "chave_secreta_do_tcc_da_vitoria" # No futuro guardamos isso no .env!
 ALGORITHM = "HS256"
 
-# 6. ROTA DE LOGIN 🔐
+# O "Segurança" da API: avisa o Swagger que usamos Token
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Função que verifica a Pulseira VIP (Token)
+def obter_usuario_atual(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    excecao_credenciais = HTTPException(
+        status_code=401,
+        detail="Token inválido ou expirado.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        # Abre o token para ler o ID do usuário (o "sub")
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        usuario_id: str = str(payload.get("sub"))
+        if usuario_id is None:
+            raise excecao_credenciais
+    except InvalidTokenError:
+        raise excecao_credenciais
+        
+    # Busca o usuário no banco para confirmar que ele existe
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == int(usuario_id)).first()
+    if usuario is None:
+        raise excecao_credenciais
+    return usuario
+
+# 6. ROTA DE LOGIN 🔐 (Atualizada para o Cadeado do Swagger)
 @app.post("/login")
-def fazer_login(usuario_login: schemas.UsuarioLogin, db: Session = Depends(get_db)):
-    # Passo A: Procura o usuário no banco pelo email
-    usuario_bd = db.query(models.Usuario).filter(models.Usuario.email == usuario_login.email).first()
+def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # O cadeado do Swagger sempre manda o email dentro de um campo chamado "username"
+    usuario_bd = db.query(models.Usuario).filter(models.Usuario.email == form_data.username).first()
     
-    # Passo B: Verifica se o usuário existe e se a senha bate com a criptografada
-    if not usuario_bd or not pwd_context.verify(usuario_login.senha, usuario_bd.senha):
+    # Verifica se o usuário existe e se a senha bate
+    if not usuario_bd or not pwd_context.verify(form_data.password, usuario_bd.senha):
         raise HTTPException(status_code=400, detail="Email ou senha incorretos.")
     
-    # Passo C: Gera a "Pulseira VIP" (Token JWT) com validade de 24 horas
+    # Gera a "Pulseira VIP" (Token JWT)
     tempo_expiracao = datetime.now(timezone.utc) + timedelta(hours=24)
     dados_token = {"sub": str(usuario_bd.id), "exp": tempo_expiracao}
     token_jwt = jwt.encode(dados_token, SECRET_KEY, algorithm=ALGORITHM)
     
     return {"access_token": token_jwt, "token_type": "bearer", "usuario_id": usuario_bd.id}
+
+# 7. ROTA DO PERFIL (Protegida! 🛡️)
+@app.get("/perfil", response_model=schemas.UsuarioPerfil)
+def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual)):
+    # Se o FastAPI chegou até aqui, é porque o Token era válido!
+    # Então, é só devolver os dados do usuário.
+    return usuario_atual
