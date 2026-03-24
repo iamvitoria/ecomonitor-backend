@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String
 from database import Base
+from sqlalchemy import Column, Integer, String, ForeignKey
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -9,3 +10,16 @@ class Usuario(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     senha = Column(String, nullable=False) # Aqui vamos guardar a senha criptografada!
     pontuacao = Column(Integer, default=0) # Todo mundo começa com 0 pontos
+    
+# --- Tabela de Denúncias Ambientais ---
+class Denuncia(Base):
+    __tablename__ = "denuncias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    titulo = Column(String)       # Ex: "Lixo acumulado na calçada"
+    descricao = Column(String)    # Ex: "Tem muito lixo na rua X, esquina com a Y"
+    localizacao = Column(String)  # Ex: "Rua das Flores, 123"
+    status = Column(String, default="Pendente") # Pendente, Em Análise, Resolvida
+    
+    # A "linha" que liga essa denúncia ao usuário que a fez!
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"))

@@ -6,6 +6,7 @@ from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 
 import jwt
 from datetime import datetime, timedelta, timezone
@@ -18,6 +19,16 @@ import schemas
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="EcoMonitor API")
+
+# --- CONFIGURAÇÃO DO CORS (A Ponte entre o React e o Backend) ---
+# Permite que o frontend converse com a nossa API sem ser bloqueado pelo navegador
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # O "*" permite qualquer origem (perfeito para a fase de testes local)
+    allow_credentials=True,
+    allow_methods=["*"], # Permite todos os métodos (GET, POST, PUT, DELETE)
+    allow_headers=["*"], # Permite todos os cabeçalhos (incluindo o nosso Token JWT)
+)
 
 # 2. Configura a criptografia de senhas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -112,3 +123,37 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual)):
     # Se o FastAPI chegou até aqui, é porque o Token era válido!
     # Então, é só devolver os dados do usuário.
     return usuario_atual
+
+# 8. ROTA DE CRIAR DENÚNCIA (Protegida! 🛡️)
+@app.post("/denuncias", response_model=schemas.DenunciaResposta)
+def criar_denuncia(
+    denuncia: schemas.DenunciaCriar, 
+    db: Session = Depends(get_db),
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual) # Exige a Pulseira VIP!
+):
+    # Cria a denúncia no banco de dados
+    nova_denuncia = models.Denuncia(
+        titulo=denuncia.titulo,
+        descricao=denuncia.descricao,
+        localizacao=denuncia.localizacao,
+        usuario_id=usuario_atual.id # Liga a denúncia ao usuário logado
+    )
+    db.add(nova_denuncia)
+    
+    # Bônus: O usuário ganha 10 pontos de "Cidadão Consciente" por ajudar!
+    usuario_atual.pontuacao += 10 
+    
+    db.commit()
+    db.refresh(nova_denuncia)
+    
+    return nova_denuncia
+
+# 9. ROTA PARA VER MINHAS DENÚNCIAS (Protegida! 🛡️)
+@app.get("/minhas-denuncias", response_model=list[schemas.DenunciaResposta])
+def listar_minhas_denuncias(
+    db: Session = Depends(get_db),
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+):
+    # Vai no banco e busca só as denúncias que tem o ID do usuário logado
+    denuncias = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == usuario_atual.id).all()
+    return denuncias
