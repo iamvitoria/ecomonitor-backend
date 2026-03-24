@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
+import jwt
+from datetime import datetime, timedelta, timezone
+
 from database import engine, Base, get_db
 import models
 import schemas
@@ -52,3 +55,24 @@ def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
     db.refresh(novo_usuario) # Atualiza para pegar o ID que o banco gerou
     
     return {"mensagem": "Usuário criado com sucesso!", "usuario_id": novo_usuario.id}
+
+# --- CONFIGURAÇÕES DO TOKEN ---
+SECRET_KEY = "chave_secreta_do_tcc_da_vitoria" # No futuro guardamos isso no .env!
+ALGORITHM = "HS256"
+
+# 6. ROTA DE LOGIN 🔐
+@app.post("/login")
+def fazer_login(usuario_login: schemas.UsuarioLogin, db: Session = Depends(get_db)):
+    # Passo A: Procura o usuário no banco pelo email
+    usuario_bd = db.query(models.Usuario).filter(models.Usuario.email == usuario_login.email).first()
+    
+    # Passo B: Verifica se o usuário existe e se a senha bate com a criptografada
+    if not usuario_bd or not pwd_context.verify(usuario_login.senha, usuario_bd.senha):
+        raise HTTPException(status_code=400, detail="Email ou senha incorretos.")
+    
+    # Passo C: Gera a "Pulseira VIP" (Token JWT) com validade de 24 horas
+    tempo_expiracao = datetime.now(timezone.utc) + timedelta(hours=24)
+    dados_token = {"sub": str(usuario_bd.id), "exp": tempo_expiracao}
+    token_jwt = jwt.encode(dados_token, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {"access_token": token_jwt, "token_type": "bearer", "usuario_id": usuario_bd.id}
