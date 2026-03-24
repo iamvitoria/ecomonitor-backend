@@ -32,16 +32,6 @@ if not os.path.exists("uploads"):
 # "Libera" a pasta uploads para a internet ver as fotos
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# --- CONFIGURAÇÃO DO CORS (A Ponte entre o React e o Backend) ---
-# Permite que o frontend converse com a nossa API sem ser bloqueado pelo navegador
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], # O "*" permite qualquer origem (perfeito para a fase de testes local)
-    allow_credentials=True,
-    allow_methods=["*"], # Permite todos os métodos (GET, POST, PUT, DELETE)
-    allow_headers=["*"], # Permite todos os cabeçalhos (incluindo o nosso Token JWT)
-)
-
 # 2. Configura a criptografia de senhas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -49,7 +39,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False, 
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -189,7 +179,7 @@ def upload_foto(
         shutil.copyfileobj(foto.file, buffer)
 
     # 4. Salva o link da foto no banco de dados do usuário
-    url_foto = f"http://localhost:8000/{caminho_completo}"
+    url_foto = f"https://ecomonitor-api.onrender.com/{caminho_completo}"
     usuario_atual.foto_perfil = url_foto
     db.commit()
 
