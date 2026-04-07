@@ -1,6 +1,11 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Float, ForeignKey
 from database import Base
-from sqlalchemy import Column, Integer, String, ForeignKey
+from fastapi import APIRouter, UploadFile, File, Form, Depends
+from sqlalchemy.orm import Session
+from database import get_db
+from models import Denuncia, Usuario 
+import os
+import shutil
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -11,16 +16,18 @@ class Usuario(Base):
     senha = Column(String)
     pontuacao = Column(Integer, default=0)
     foto_perfil = Column(String, nullable=True) 
-       
+
 # --- Tabela de Denúncias Ambientais ---
 class Denuncia(Base):
     __tablename__ = "denuncias"
 
     id = Column(Integer, primary_key=True, index=True)
-    titulo = Column(String)       # Ex: "Lixo acumulado na calçada"
-    descricao = Column(String)    # Ex: "Tem muito lixo na rua X, esquina com a Y"
-    localizacao = Column(String)  # Ex: "Rua das Flores, 123"
+    categoria = Column(String)        # Ex: "lixo", "desmatamento"
+    descricao = Column(String)        # Ex: "Entulho na calçada"
+    latitude = Column(Float)          # Lat do GPS
+    longitude = Column(Float)         # Lng do GPS
+    foto_url = Column(String)         # Caminho de onde a foto foi salva
     status = Column(String, default="Pendente") # Pendente, Em Análise, Resolvida
     
-    # A "linha" que liga essa denúncia ao usuário que a fez!
+    # A "linha" que liga essa denúncia ao usuário que a fez
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
