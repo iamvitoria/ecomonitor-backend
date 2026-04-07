@@ -2,12 +2,9 @@ import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-
+from routers import usuarios, denuncias
 from database import engine
 import models
-
-# 1. Importando os nossos "mini-apps" (as rotas separadas da pasta routers)
-from routers import denuncias, usuarios
 
 # 2. Cria as tabelas no banco de dados (se não existirem)
 models.Base.metadata.create_all(bind=engine)
@@ -25,7 +22,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False, 
+    allow_credentials=True, 
     allow_methods=["*"],
     allow_headers=["*"],
 )
