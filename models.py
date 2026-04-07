@@ -3,7 +3,6 @@ from database import Base
 from fastapi import APIRouter, UploadFile, File, Form, Depends
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Denuncia, Usuario 
 import os
 import shutil
 
