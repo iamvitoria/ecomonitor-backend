@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class UsuarioCriar(BaseModel):
     nome: str
@@ -18,26 +19,22 @@ class UsuarioPerfil(BaseModel):
 
     class Config:
         from_attributes = True
-               
-# O que o React vai enviar quando o usuário preencher o formulário de denúncia
-class DenunciaCriar(BaseModel):
-    titulo: str
-    descricao: str
-    localizacao: str
 
-# O que o Backend vai devolver e mostrar no App
+# --- ATUALIZADO: O que o Backend vai devolver e mostrar no App ---
 class DenunciaResposta(BaseModel):
     id: int
-    titulo: str
+    categoria: str
     descricao: str
-    localizacao: str
+    latitude: float
+    longitude: float
+    foto_url: str
     status: str
     usuario_id: int
 
     class Config:
         from_attributes = True
 
-# O que o Backend vai devolver (como recibo)
+# O que o Backend vai devolver (como recibo das ações do usuário)
 class AcaoResposta(BaseModel):
     id: int
     nome_acao: str
