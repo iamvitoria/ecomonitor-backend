@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jwt.exceptions import InvalidTokenError
@@ -105,3 +106,33 @@ def upload_foto(
     db.commit()
 
     return {"mensagem": "Foto salva com sucesso!", "foto_perfil": url_foto}
+
+# --- 6. ROTA DE CONQUISTAS 🏆 (Protegida! 🛡️) ---
+@router.get("/conquistas")
+def listar_conquistas(
+    db: Session = Depends(get_db), 
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+):
+    try:
+        # A query cruza o catálogo de conquistas com as que o usuário logado já tem
+        query = text("""
+            SELECT 
+                c.id, 
+                c.nome, 
+                c.descricao, 
+                c.icone_url,
+                CASE WHEN uc.id IS NOT NULL THEN true ELSE false END AS desbloqueado
+            FROM conquistas c
+            LEFT JOIN usuarios_conquistas uc 
+                ON c.id = uc.conquista_id AND uc.usuario_id = :usuario_id
+            ORDER BY c.pontos_necessarios ASC;
+        """)
+        
+        # Executa a query usando o ID do usuário que vem do Token
+        resultado = db.execute(query, {"usuario_id": usuario_atual.id}).mappings().all()
+        
+        return [dict(row) for row in resultado]
+
+    except Exception as e:
+        print(f"Erro ao buscar conquistas: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao carregar conquistas.")
