@@ -27,5 +27,5 @@ class Denuncia(Base):
     longitude = Column(Float)         # Lng do GPS
     foto_url = Column(String)         # Caminho de onde a foto foi salva
     status = Column(String, default="Pendente") # Pendente, Em Análise, Resolvida
-    data_criacao = Column(DateTime(timezone=True), name="created_at", server_default=func.now()) 
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
+    data_criacao = Column(DateTime(timezone=True), server_default=func.now())
