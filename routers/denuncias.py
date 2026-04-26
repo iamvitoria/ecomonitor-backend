@@ -3,10 +3,10 @@ import uuid
 import models
 import schemas
 
-from fastapi import APIRouter, Depends, Form, UploadFile, File
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from typing import List
 from database import get_db
+from typing import List
 from routers.usuarios import obter_usuario_atual
 from schemas import DenunciaResposta
 
@@ -66,3 +66,28 @@ def listar_minhas_denuncias(
 ):
     denuncias = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == usuario_atual.id).all()
     return denuncias
+
+@router.put("/{denuncia_id}/status")
+def atualizar_status_denuncia(
+    denuncia_id: int, 
+    novo_status: str, 
+    db: Session = Depends(get_db)
+):
+    denuncia = db.query(models.Denuncia).filter(models.Denuncia.id == denuncia_id).first()
+    
+    if not denuncia:
+        raise HTTPException(status_code=404, detail="Denúncia não encontrada")
+
+    denuncia.status = novo_status
+
+    texto_historico = f"Status alterado para '{novo_status}'\n(por admin)"
+    
+    novo_historico = models.HistoricoDenuncia(
+        denuncia_id=denuncia.id,
+        texto=texto_historico
+    )
+    
+    db.add(novo_historico)
+    db.commit()
+
+    return {"status": "sucesso", "mensagem": "Status atualizado e histórico registrado!"}
