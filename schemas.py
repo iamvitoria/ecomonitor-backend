@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from pydantic import BaseModel
 from typing import Optional
 
@@ -22,7 +21,6 @@ class UsuarioPerfil(BaseModel):
     class Config:
         from_attributes = True
 
-# --- ATUALIZADO: O que o Backend vai devolver e mostrar no App ---
 class DenunciaResposta(BaseModel):
     id: int
     categoria: str
@@ -37,7 +35,6 @@ class DenunciaResposta(BaseModel):
     class Config:
         from_attributes = True
 
-# O que o Backend vai devolver (como recibo das ações do usuário)
 class AcaoResposta(BaseModel):
     id: int
     nome_acao: str
