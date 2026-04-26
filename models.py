@@ -16,6 +16,16 @@ class Usuario(Base):
     senha = Column(String)
     pontuacao = Column(Integer, default=0)
     foto_perfil = Column(String, nullable=True) 
+    
+class HistoricoDenuncia(Base):
+    __tablename__ = "historico_denuncias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    denuncia_id = Column(Integer, ForeignKey("denuncias.id"))
+    texto = Column(String)
+    data_registro = Column(DateTime(timezone=True), server_default=func.now())
+
+    denuncia = relationship("Denuncia", back_populates="historico")
 
 class Denuncia(Base):
     __tablename__ = "denuncias"
@@ -30,13 +40,3 @@ class Denuncia(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
     data_criacao = Column(DateTime(timezone=True), server_default=func.now())
     historico = relationship("HistoricoDenuncia", back_populates="denuncia")
-    
-class HistoricoDenuncia(Base):
-    __tablename__ = "historico_denuncias"
-
-    id = Column(Integer, primary_key=True, index=True)
-    denuncia_id = Column(Integer, ForeignKey("denuncias.id"))
-    texto = Column(String)
-    data_registro = Column(DateTime(timezone=True), server_default=func.now())
-
-    denuncia = relationship("Denuncia", back_populates="historico")
