@@ -30,6 +30,7 @@ class DenunciaResposta(BaseModel):
     foto_url: str
     status: str
     usuario_id: int
+    data_criacao: datetime
 
     class Config:
         from_attributes = True
