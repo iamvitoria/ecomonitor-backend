@@ -1,20 +1,17 @@
 import shutil
 import uuid
-from fastapi import APIRouter, Depends, Form, UploadFile, File
-
-from sqlalchemy.orm import Session
-from typing import List
-
-from database import get_db
 import models
 import schemas
 
+from fastapi import APIRouter, Depends, Form, UploadFile, File
+from sqlalchemy.orm import Session
+from typing import List
+from database import get_db
 from routers.usuarios import obter_usuario_atual
 from schemas import DenunciaResposta
 
 router = APIRouter(tags=["Denúncias"])
 
-# ROTA DE CRIAR DENÚNCIA COM GPS E FOTO (Protegida! 🛡️)
 @router.post("/denuncias")
 async def criar_denuncia(
     categoria: str = Form(...),
@@ -25,7 +22,6 @@ async def criar_denuncia(
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual) 
 ):
-    # Cria um nome único e salva a foto
     extensao = foto.filename.split(".")[-1]
     nome_arquivo = f"denuncia_{uuid.uuid4().hex}.{extensao}"
     caminho_foto = f"uploads/{nome_arquivo}"
@@ -33,7 +29,6 @@ async def criar_denuncia(
     with open(caminho_foto, "wb") as buffer:
         shutil.copyfileobj(foto.file, buffer)
 
-    # Salva no banco
     nova_denuncia = models.Denuncia(
         categoria=categoria,
         descricao=descricao,
@@ -44,7 +39,6 @@ async def criar_denuncia(
     )
     db.add(nova_denuncia)
     
-    # Gamificação: 50 pontos!
     pontos_recompensa = 50
     usuario_atual.pontuacao += pontos_recompensa 
     
