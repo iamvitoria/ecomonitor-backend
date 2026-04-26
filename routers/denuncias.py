@@ -1,16 +1,17 @@
 import shutil
 import uuid
 from fastapi import APIRouter, Depends, Form, UploadFile, File
+
 from sqlalchemy.orm import Session
+from typing import List
 
 from database import get_db
 import models
+import schemas
 
-# IMPORTANTE: Puxamos a função que checa a "Pulseira VIP" (Token) lá do usuarios.py
 from routers.usuarios import obter_usuario_atual
 from schemas import DenunciaResposta
 
-# Criamos o roteador para as denúncias
 router = APIRouter(tags=["Denúncias"])
 
 # ROTA DE CRIAR DENÚNCIA COM GPS E FOTO (Protegida! 🛡️)
@@ -55,7 +56,7 @@ async def criar_denuncia(
         "pontos_ganhos": pontos_recompensa
     }
 
-@router.get("/minhas-denuncias", response_model=list[DenunciaResposta])
+@router.get("/minhas-denuncias", response_model=List[schemas.DenunciaResposta])
 def listar_minhas_denuncias(
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
