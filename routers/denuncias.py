@@ -8,6 +8,7 @@ import models
 
 # IMPORTANTE: Puxamos a função que checa a "Pulseira VIP" (Token) lá do usuarios.py
 from routers.usuarios import obter_usuario_atual
+from schemas import DenunciaResposta
 
 # Criamos o roteador para as denúncias
 router = APIRouter(tags=["Denúncias"])
@@ -54,8 +55,7 @@ async def criar_denuncia(
         "pontos_ganhos": pontos_recompensa
     }
 
-# ROTA PARA VER MINHAS DENÚNCIAS (Protegida! 🛡️)
-@router.get("/minhas-denuncias")
+@router.get("/minhas-denuncias", response_model=list[DenunciaResposta])
 def listar_minhas_denuncias(
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
