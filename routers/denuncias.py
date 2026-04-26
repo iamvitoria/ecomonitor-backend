@@ -39,6 +39,15 @@ async def criar_denuncia(
     )
     db.add(nova_denuncia)
     
+    db.commit()
+    db.refresh(nova_denuncia)
+    
+    novo_historico = models.HistoricoDenuncia(
+        denuncia_id=nova_denuncia.id,
+        texto="Denúncia enviada pelo utilizador\n(+50 pts)"
+    )
+    db.add(novo_historico)
+    
     pontos_recompensa = 50
     usuario_atual.pontuacao += pontos_recompensa 
     
@@ -46,7 +55,7 @@ async def criar_denuncia(
     
     return {
         "status": "sucesso", 
-        "mensagem": "Denúncia registrada com sucesso!", 
+        "mensagem": "Denúncia registada com sucesso!", 
         "pontos_ganhos": pontos_recompensa
     }
 

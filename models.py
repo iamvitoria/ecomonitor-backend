@@ -1,8 +1,9 @@
 from sqlalchemy import Column, DateTime, Integer, String, Float, ForeignKey, func
 from database import Base
 from fastapi import APIRouter, UploadFile, File, Form, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, relationship
 from database import get_db
+
 import os
 import shutil
 
@@ -16,16 +17,26 @@ class Usuario(Base):
     pontuacao = Column(Integer, default=0)
     foto_perfil = Column(String, nullable=True) 
 
-# --- Tabela de Denúncias Ambientais ---
 class Denuncia(Base):
     __tablename__ = "denuncias"
 
     id = Column(Integer, primary_key=True, index=True)
-    categoria = Column(String)        # Ex: "lixo", "desmatamento"
-    descricao = Column(String)        # Ex: "Entulho na calçada"
-    latitude = Column(Float)          # Lat do GPS
-    longitude = Column(Float)         # Lng do GPS
-    foto_url = Column(String)         # Caminho de onde a foto foi salva
-    status = Column(String, default="Pendente") # Pendente, Em Análise, Resolvida
+    categoria = Column(String)        
+    descricao = Column(String)        
+    latitude = Column(Float)          
+    longitude = Column(Float)         
+    foto_url = Column(String)         
+    status = Column(String, default="Pendente")
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
     data_criacao = Column(DateTime(timezone=True), server_default=func.now())
+    historico = relationship("HistoricoDenuncia", back_populates="denuncia")
+    
+class HistoricoDenuncia(Base):
+    __tablename__ = "historico_denuncias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    denuncia_id = Column(Integer, ForeignKey("denuncias.id"))
+    texto = Column(String)
+    data_registro = Column(DateTime(timezone=True), server_default=func.now())
+
+    denuncia = relationship("Denuncia", back_populates="historico")

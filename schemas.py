@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
 
 class UsuarioCriar(BaseModel):
     nome: str
@@ -20,6 +20,14 @@ class UsuarioPerfil(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class HistoricoResposta(BaseModel):
+    id: int
+    texto: str
+    data_registro: datetime
+
+    class Config:
+        from_attributes = True
 
 class DenunciaResposta(BaseModel):
     id: int
@@ -31,6 +39,7 @@ class DenunciaResposta(BaseModel):
     status: str
     usuario_id: int
     data_criacao: datetime
+    historico: List[HistoricoResposta] = []
 
     class Config:
         from_attributes = True
