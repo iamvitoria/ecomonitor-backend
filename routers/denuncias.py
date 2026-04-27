@@ -91,3 +91,7 @@ def atualizar_status_denuncia(
     db.commit()
 
     return {"status": "sucesso", "mensagem": "Status atualizado e histórico registrado!"}
+
+@router.get("/denuncias", response_model=List[schemas.DenunciaResposta])
+def listar_todas_denuncias(db: Session = Depends(get_db)):
+    return db.query(models.Denuncia).all()
