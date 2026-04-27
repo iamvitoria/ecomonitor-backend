@@ -67,7 +67,7 @@ def listar_minhas_denuncias(
     denuncias = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == usuario_atual.id).all()
     return denuncias
 
-@router.put("/{denuncia_id}/status")
+@router.put("/denuncias/{denuncia_id}/status")
 def atualizar_status_denuncia(
     denuncia_id: int, 
     novo_status: str, 
