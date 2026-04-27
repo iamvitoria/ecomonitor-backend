@@ -36,7 +36,7 @@ class Denuncia(Base):
     latitude = Column(Float)          
     longitude = Column(Float)         
     foto_url = Column(String)         
-    status = Column(String, default="Pendente")
+    status = Column(String, default="Em análise")
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
     data_criacao = Column(DateTime(timezone=True), server_default=func.now())
     historico = relationship("HistoricoDenuncia", back_populates="denuncia")

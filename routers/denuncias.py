@@ -95,3 +95,12 @@ def atualizar_status_denuncia(
 @router.get("/denuncias", response_model=List[schemas.DenunciaResposta])
 def listar_todas_denuncias(db: Session = Depends(get_db)):
     return db.query(models.Denuncia).all()
+
+@router.get("/denuncias/{denuncia_id}", response_model=schemas.DenunciaResposta)
+def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
+    denuncia = db.query(models.Denuncia).filter(models.Denuncia.id == denuncia_id).first()
+    
+    if not denuncia:
+        raise HTTPException(status_code=404, detail="Denúncia não encontrada no banco")
+    
+    return denuncia
