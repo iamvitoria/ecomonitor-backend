@@ -109,5 +109,7 @@ def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
     if denuncia.usuario:
         contagem = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == denuncia.usuario.id).count()
         denuncia.usuario.contribuicoes = contagem
-        
+        if not denuncia.usuario.regiao:
+            denuncia.usuario.regiao = "Santa Maria"
+            
     return denuncia
