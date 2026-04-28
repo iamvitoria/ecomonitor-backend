@@ -94,9 +94,17 @@ def atualizar_status_denuncia(
 
 @router.get("/denuncias", response_model=List[schemas.DenunciaResposta])
 def listar_todas_denuncias(db: Session = Depends(get_db)):
-    return db.query(models.Denuncia)\
-             .options(joinedload(models.Denuncia.usuario))\
-             .all()
+    denuncias = db.query(models.Denuncia)\
+                  .options(joinedload(models.Denuncia.usuario))\
+                  .all()
+    
+    for d in denuncias:
+        if d.usuario:
+            if not d.usuario.regiao:
+                d.usuario.regiao = "Santa Maria"
+            d.usuario.contribuicoes = 0 
+            
+    return denuncias
 
 @router.get("/denuncias/{denuncia_id}", response_model=schemas.DenunciaResposta)
 def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):

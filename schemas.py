@@ -33,6 +33,7 @@ class UsuarioPerfil(BaseModel):
         from_attributes = True
 
 class UsuarioResumo(BaseModel):
+    id: int
     nome: str
     regiao: Optional[str] = "Santa Maria"
     contribuicoes: Optional[int] = 0
