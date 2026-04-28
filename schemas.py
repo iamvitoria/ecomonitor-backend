@@ -34,6 +34,8 @@ class UsuarioPerfil(BaseModel):
 
 class UsuarioResumo(BaseModel):
     nome: str
+    regiao: Optional[str] = "Santa Maria"
+    contribuicoes: Optional[int] = 0
     
     class Config:
         from_attributes = True
