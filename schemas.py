@@ -34,14 +34,12 @@ class UsuarioPerfil(BaseModel):
         orm_mode = True
 
 class UsuarioResumo(BaseModel):
-    id: int
-    nome: str
+    id: Optional[int] = None
+    nome: Optional[str] = "Anônimo"
     regiao: Optional[str] = "Santa Maria"
-    contribuicoes: Optional[int] = 0
-    
+
     class Config:
         from_attributes = True
-        orm_mode = True
 
 class HistoricoResposta(BaseModel):
     id: int
@@ -71,16 +69,14 @@ class DenunciaCreate(BaseModel):
 class DenunciaResposta(BaseModel):
     id: int
     categoria: str
-    descricao: Optional[str]
+    descricao: Optional[str] = ""
     status: str
     data_criacao: datetime
-    foto_url: Optional[str]
+    foto_url: Optional[str] = None
     latitude: float
     longitude: float
-    usuario_id: Optional[int] = None 
+    usuario_id: Optional[int] = None
     usuario: Optional[UsuarioResumo] = None
-    historico: List[HistoricoResposta] = []
 
     class Config:
         from_attributes = True
-        orm_mode = True

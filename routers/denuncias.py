@@ -94,34 +94,11 @@ def atualizar_status_denuncia(
 
 @router.get("/denuncias", response_model=List[schemas.DenunciaResposta])
 def listar_todas_denuncias(db: Session = Depends(get_db)):
-    denuncias = db.query(models.Denuncia)\
-                  .options(joinedload(models.Denuncia.usuario))\
-                  .options(joinedload(models.Denuncia.historico))\
-                  .all()
-    
-    for d in denuncias:
-        if d.usuario:
-            if not d.usuario.regiao:
-                d.usuario.regiao = "Santa Maria"
-            d.usuario.contribuicoes = 0 
-            
-    return denuncias
+    return db.query(models.Denuncia).all()
 
 @router.get("/denuncias/{denuncia_id}", response_model=schemas.DenunciaResposta)
 def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
-    denuncia = db.query(models.Denuncia)\
-        .options(joinedload(models.Denuncia.usuario))\
-        .options(joinedload(models.Denuncia.historico))\
-        .filter(models.Denuncia.id == denuncia_id)\
-        .first()
-    
+    denuncia = db.query(models.Denuncia).filter(models.Denuncia.id == denuncia_id).first()
     if not denuncia:
         raise HTTPException(status_code=404, detail="Denúncia não encontrada")
-    
-    if denuncia.usuario:
-        contagem = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == denuncia.usuario.id).count()
-        denuncia.usuario.contribuicoes = contagem
-        if not denuncia.usuario.regiao:
-            denuncia.usuario.regiao = "Santa Maria"
-            
     return denuncia
