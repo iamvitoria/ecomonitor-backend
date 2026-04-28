@@ -13,18 +13,14 @@ from database import get_db
 import models
 import schemas
 
-# Criamos o roteador para os Usuários
 router = APIRouter(tags=["Usuários"])
 
-# --- 1. CONFIGURAÇÕES DE SEGURANÇA E TOKEN ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = "chave_secreta_do_tcc_da_vitoria" # No futuro guardamos isso no .env!
+SECRET_KEY = "chave_secreta_do_tcc_da_vitoria" 
 ALGORITHM = "HS256"
 
-# O "Segurança" da API: avisa o Swagger que usamos Token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# Função que verifica a Pulseira VIP (Token) - O denuncias.py usa isso!
 def obter_usuario_atual(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     excecao_credenciais = HTTPException(
         status_code=401,
@@ -45,7 +41,6 @@ def obter_usuario_atual(token: str = Depends(oauth2_scheme), db: Session = Depen
     return usuario
 
 
-# --- 2. ROTA DE CADASTRO 🚀 ---
 @router.post("/cadastro")
 def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
     usuario_existente = db.query(models.Usuario).filter(models.Usuario.email == usuario.email).first()
@@ -66,7 +61,6 @@ def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
     return {"mensagem": "Usuário criado com sucesso!", "usuario_id": novo_usuario.id}
 
 
-# --- 3. ROTA DE LOGIN 🔐 ---
 @router.post("/login")
 def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     usuario_bd = db.query(models.Usuario).filter(models.Usuario.email == form_data.username).first()
@@ -81,13 +75,11 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     return {"access_token": token_jwt, "token_type": "bearer", "usuario_id": usuario_bd.id}
 
 
-# --- 4. ROTA DO PERFIL (Protegida! 🛡️) ---
 @router.get("/perfil", response_model=schemas.UsuarioPerfil)
 def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual)):
     return usuario_atual
 
 
-# --- 5. ROTA PARA SUBIR FOTO DE PERFIL 📸 (Protegida! 🛡️) ---
 @router.post("/perfil/foto")
 def upload_foto(
     foto: UploadFile = File(...),
@@ -107,14 +99,12 @@ def upload_foto(
 
     return {"mensagem": "Foto salva com sucesso!", "foto_perfil": url_foto}
 
-# --- 6. ROTA DE CONQUISTAS 🏆 (Protegida! 🛡️) ---
 @router.get("/conquistas")
 def listar_conquistas(
     db: Session = Depends(get_db), 
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
 ):
     try:
-        # A query cruza o catálogo de conquistas com as que o usuário logado já tem
         query = text("""
             SELECT 
                 c.id, 
@@ -128,7 +118,6 @@ def listar_conquistas(
             ORDER BY c.pontos_necessarios ASC;
         """)
         
-        # Executa a query usando o ID do usuário que vem do Token
         resultado = db.execute(query, {"usuario_id": usuario_atual.id}).mappings().all()
         
         return [dict(row) for row in resultado]

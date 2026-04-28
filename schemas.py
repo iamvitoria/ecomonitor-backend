@@ -1,6 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel
 from typing import List, Optional
+from enum import Enum
 
 class UsuarioCriar(BaseModel):
     nome: str
@@ -43,6 +44,22 @@ class DenunciaResposta(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class CategoriaEnum(str, Enum):
+    lixo = "Descarte Irregular de Lixo"
+    desmatamento = "Desmatamento"
+    poluicao_agua = "Poluição da Água"
+    queimada = "Queimada"
+    poluicao_ar = "Poluição do Ar"
+    animais = "Maus-tratos Animais"
+    foco_mosquito = "Foco de Mosquito"
+    esgoto = "Esgoto Aberto"
+
+class DenunciaCreate(BaseModel):
+    categoria: CategoriaEnum  
+    descricao: str
+    latitude: float
+    longitude: float
 
 class AcaoResposta(BaseModel):
     id: int
