@@ -69,3 +69,23 @@ class AcaoResposta(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class UsuarioResumo(BaseModel):
+    nome: str
+    
+    class Config:
+        from_attributes = True
+
+class DenunciaResposta(BaseModel):
+    id: int
+    categoria: str
+    descricao: Optional[str]
+    status: str
+    data_criacao: datetime
+    foto_url: Optional[str]
+    latitude: float
+    longitude: float
+    usuario: Optional[UsuarioResumo] 
+
+    class Config:
+        from_attributes = True
