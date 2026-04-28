@@ -3,6 +3,16 @@ from pydantic import BaseModel
 from typing import List, Optional
 from enum import Enum
 
+class CategoriaEnum(str, Enum):
+    lixo = "Descarte Irregular de Lixo"
+    desmatamento = "Desmatamento"
+    poluicao_agua = "Poluição da Água"
+    queimada = "Queimada"
+    poluicao_ar = "Poluição do Ar"
+    animais = "Maus-tratos Animais"
+    foco_mosquito = "Foco de Mosquito"
+    esgoto = "Esgoto Aberto"
+
 class UsuarioCriar(BaseModel):
     nome: str
     email: str
@@ -17,11 +27,17 @@ class UsuarioPerfil(BaseModel):
     nome: str
     email: str
     pontuacao: int
-    foto_perfil: str | None = None 
+    foto_perfil: Optional[str] = None 
 
     class Config:
         from_attributes = True
-        
+
+class UsuarioResumo(BaseModel):
+    nome: str
+    
+    class Config:
+        from_attributes = True
+
 class HistoricoResposta(BaseModel):
     id: int
     texto: str
@@ -29,37 +45,6 @@ class HistoricoResposta(BaseModel):
 
     class Config:
         from_attributes = True
-
-class DenunciaResposta(BaseModel):
-    id: int
-    categoria: str
-    descricao: str
-    latitude: float
-    longitude: float
-    foto_url: str
-    status: str
-    usuario_id: int
-    data_criacao: datetime
-    historico: List[HistoricoResposta] = []
-
-    class Config:
-        from_attributes = True
-        
-class CategoriaEnum(str, Enum):
-    lixo = "Descarte Irregular de Lixo"
-    desmatamento = "Desmatamento"
-    poluicao_agua = "Poluição da Água"
-    queimada = "Queimada"
-    poluicao_ar = "Poluição do Ar"
-    animais = "Maus-tratos Animais"
-    foco_mosquito = "Foco de Mosquito"
-    esgoto = "Esgoto Aberto"
-
-class DenunciaCreate(BaseModel):
-    categoria: CategoriaEnum  
-    descricao: str
-    latitude: float
-    longitude: float
 
 class AcaoResposta(BaseModel):
     id: int
@@ -69,12 +54,12 @@ class AcaoResposta(BaseModel):
 
     class Config:
         from_attributes = True
-        
-class UsuarioResumo(BaseModel):
-    nome: str
-    
-    class Config:
-        from_attributes = True
+
+class DenunciaCreate(BaseModel):
+    categoria: CategoriaEnum  
+    descricao: str
+    latitude: float
+    longitude: float
 
 class DenunciaResposta(BaseModel):
     id: int
@@ -85,7 +70,9 @@ class DenunciaResposta(BaseModel):
     foto_url: Optional[str]
     latitude: float
     longitude: float
-    usuario: Optional[UsuarioResumo] 
+    usuario_id: int
+    usuario: Optional[UsuarioResumo] = None
+    historico: List[HistoricoResposta] = []
 
     class Config:
         from_attributes = True
