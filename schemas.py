@@ -31,6 +31,7 @@ class UsuarioPerfil(BaseModel):
 
     class Config:
         from_attributes = True
+        orm_mode = True
 
 class UsuarioResumo(BaseModel):
     id: int
@@ -40,6 +41,7 @@ class UsuarioResumo(BaseModel):
     
     class Config:
         from_attributes = True
+        orm_mode = True
 
 class HistoricoResposta(BaseModel):
     id: int
@@ -48,6 +50,7 @@ class HistoricoResposta(BaseModel):
 
     class Config:
         from_attributes = True
+        orm_mode = True
 
 class AcaoResposta(BaseModel):
     id: int
@@ -57,6 +60,7 @@ class AcaoResposta(BaseModel):
 
     class Config:
         from_attributes = True
+        orm_mode = True
 
 class DenunciaCreate(BaseModel):
     categoria: CategoriaEnum  
@@ -73,9 +77,10 @@ class DenunciaResposta(BaseModel):
     foto_url: Optional[str]
     latitude: float
     longitude: float
-    usuario_id: int
+    usuario_id: Optional[int] = None 
     usuario: Optional[UsuarioResumo] = None
     historico: List[HistoricoResposta] = []
 
     class Config:
         from_attributes = True
+        orm_mode = True

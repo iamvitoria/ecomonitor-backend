@@ -17,12 +17,10 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=None,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], # URL exata do React
     allow_credentials=True, 
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
 
 app.include_router(usuarios.router)
@@ -30,4 +28,4 @@ app.include_router(denuncias.router)
 
 @app.get("/")
 def home():
-    return {"status": "sucesso", "mensagem": "API do EcoMonitor online e modularizada!"}
+    return {"status": "sucesso", "mensagem": "API do EcoMonitor online!"}

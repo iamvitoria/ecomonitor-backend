@@ -96,6 +96,7 @@ def atualizar_status_denuncia(
 def listar_todas_denuncias(db: Session = Depends(get_db)):
     denuncias = db.query(models.Denuncia)\
                   .options(joinedload(models.Denuncia.usuario))\
+                  .options(joinedload(models.Denuncia.historico))\
                   .all()
     
     for d in denuncias:
@@ -110,6 +111,7 @@ def listar_todas_denuncias(db: Session = Depends(get_db)):
 def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
     denuncia = db.query(models.Denuncia)\
         .options(joinedload(models.Denuncia.usuario))\
+        .options(joinedload(models.Denuncia.historico))\
         .filter(models.Denuncia.id == denuncia_id)\
         .first()
     
