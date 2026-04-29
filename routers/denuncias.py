@@ -50,7 +50,7 @@ async def criar_denuncia(
     db.commit()
     return {"status": "sucesso", "mensagem": "Denúncia registrada!"}
 
-@router.get("/minhas-denuncias", response_model=list[schemas.DenunciaResponse])
+@router.get("/minhas-denuncias", response_model=List[schemas.DenunciaResposta])
 def listar_minhas_denuncias(
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
