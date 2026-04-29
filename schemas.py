@@ -26,12 +26,10 @@ class UsuarioPerfil(BaseModel):
     id: int
     nome: str
     email: str
-    pontuacao: int
+    pontuacao: Optional[int] = 0
     foto_perfil: Optional[str] = None 
-
     class Config:
         from_attributes = True
-        orm_mode = True
 
 class UsuarioResumo(BaseModel):
     id: Optional[int] = None
@@ -75,8 +73,7 @@ class DenunciaResposta(BaseModel):
     foto_url: Optional[str] = None
     latitude: float
     longitude: float
-    usuario_id: Optional[int] = None
-    usuario: Optional[UsuarioResumo] = None
+    usuario_id: Optional[int] = None 
 
     class Config:
         from_attributes = True

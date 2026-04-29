@@ -17,8 +17,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=False,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -28,4 +27,4 @@ app.include_router(denuncias.router)
 
 @app.get("/")
 def home():
-    return {"status": "sucesso", "mensagem": "API do EcoMonitor online!"}
+    return {"status": "sucesso", "mensagem": "API online"}
