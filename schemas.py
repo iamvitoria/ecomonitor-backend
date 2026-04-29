@@ -28,6 +28,7 @@ class UsuarioPerfil(BaseModel):
     email: str
     pontuacao: Optional[int] = 0
     foto_perfil: Optional[str] = None 
+
     class Config:
         from_attributes = True
 
@@ -74,6 +75,5 @@ class DenunciaResposta(BaseModel):
     latitude: float
     longitude: float
     usuario_id: Optional[int] = None 
-
     class Config:
         from_attributes = True
