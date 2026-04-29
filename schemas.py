@@ -1,64 +1,56 @@
-from datetime import datetime
-from pydantic import BaseModel
-from typing import List, Optional
-from enum import Enum
+import shutil
+import uuid
+import models
+import schemas
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File
+from sqlalchemy.orm import Session
+from database import get_db
+from typing import List
+from routers.usuarios import obter_usuario_atual
 
-class CategoriaEnum(str, Enum):
-    lixo = "Descarte Irregular de Lixo"
-    desmatamento = "Desmatamento"
-    poluicao_agua = "Poluição da Água"
-    queimada = "Queimada"
-    poluicao_ar = "Poluição do Ar"
-    animais = "Maus-tratos Animais"
-    foco_mosquito = "Foco de Mosquito"
-    esgoto = "Esgoto Aberto"
+router = APIRouter(tags=["Denúncias"])
 
-class UsuarioResumo(BaseModel):
-    id: Optional[int] = None
-    nome: Optional[str] = "Anônimo"
-    regiao: Optional[str] = "Santa Maria"
-    contribuicoes: Optional[int] = 0
-    class Config:
-        from_attributes = True
+@router.post("/denuncias")
+async def criar_denuncia(
+    categoria: str = Form(...),
+    descricao: str = Form(""),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    foto: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual) 
+):
+    extensao = foto.filename.split(".")[-1]
+    nome_arquivo = f"denuncia_{uuid.uuid4().hex}.{extensao}"
+    caminho_foto = f"uploads/{nome_arquivo}"
 
-class HistoricoResposta(BaseModel):
-    id: int
-    texto: str
-    data_registro: datetime
-    class Config:
-        from_attributes = True
+    with open(caminho_foto, "wb") as buffer:
+        shutil.copyfileobj(foto.file, buffer)
 
-class DenunciaResposta(BaseModel):
-    id: int
-    categoria: str
-    descricao: Optional[str] = ""
-    status: str
-    data_criacao: datetime
-    foto_url: Optional[str] = None
-    latitude: float
-    longitude: float
-    usuario_id: Optional[int] = None
-    usuario: Optional[UsuarioResumo] = None
-    historico: List[HistoricoResposta] = []
+    nova_denuncia = models.Denuncia(
+        categoria=categoria,
+        descricao=descricao,
+        latitude=latitude,
+        longitude=longitude,
+        foto_url=caminho_foto,
+        usuario_id=usuario_atual.id
+    )
+    db.add(nova_denuncia)
+    db.commit()
+    db.refresh(nova_denuncia)
+    
+    usuario_atual.pontuacao += 50 
+    db.commit()
+    
+    return {"status": "sucesso", "mensagem": "Denúncia registrada!"}
 
-    class Config:
-        from_attributes = True
+@router.get("/denuncias", response_model=List[schemas.DenunciaResposta])
+def listar_todas_denuncias(db: Session = Depends(get_db)):
+    return db.query(models.Denuncia).all()
 
-class UsuarioCriar(BaseModel):
-    nome: str
-    email: str
-    senha: str
-
-class UsuarioLogin(BaseModel):
-    email: str
-    senha: str
-
-class UsuarioPerfil(BaseModel):
-    id: int
-    nome: str
-    email: str
-    pontuacao: Optional[int] = 0
-    foto_perfil: Optional[str] = None 
-    regiao: Optional[str] = "Santa Maria"
-    class Config:
-        from_attributes = True
+@router.get("/denuncias/{denuncia_id}", response_model=schemas.DenunciaResposta)
+def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
+    denuncia = db.query(models.Denuncia).filter(models.Denuncia.id == denuncia_id).first()
+    if not denuncia:
+        raise HTTPException(status_code=404, detail="Denúncia não encontrada")
+    return denuncia
