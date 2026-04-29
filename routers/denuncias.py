@@ -34,13 +34,18 @@ async def criar_denuncia(
     extensao = foto.filename.split(".")[-1]
     nome_arquivo = f"denuncia_{uuid.uuid4().hex}.{extensao}"
     caminho_foto = f"uploads/{nome_arquivo}"
+    
     with open(caminho_foto, "wb") as buffer:
         shutil.copyfileobj(foto.file, buffer)
+        
     nova_denuncia = models.Denuncia(
-        categoria=categoria, descricao=descricao,
-        latitude=latitude, longitude=longitude,
-        foto_url=caminho_foto, usuario_id=usuario_atual.id
+        categoria=categoria, 
+        descricao=descricao,
+        latitude=latitude, 
+        longitude=longitude,
+        foto_url=caminho_foto, 
+        usuario_id=usuario_atual.id
     )
     db.add(nova_denuncia)
     db.commit()
-    return {"status": "sucesso"}
+    return {"status": "sucesso", "mensagem": "Denúncia registrada!"}
