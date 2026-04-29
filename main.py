@@ -20,7 +20,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://ecomonitor-api.onrender.com" 
+        "https://ecomonitor-api.onrender.com", 
+        "https://tcc-three-mu.vercel.app/" 
     ],
     allow_credentials=True, 
     allow_methods=["*"],
@@ -33,3 +34,9 @@ app.include_router(denuncias.router)
 @app.get("/")
 def home():
     return {"status": "sucesso", "mensagem": "API Online"}
+
+@app.get("/reset-db")
+def resetar_banco():
+    models.Base.metadata.drop_all(bind=engine)
+    models.Base.metadata.create_all(bind=engine)
+    return {"status": "Banco recriado com sucesso! Crie um usuário de teste novamente."}
