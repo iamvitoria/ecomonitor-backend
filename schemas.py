@@ -28,6 +28,7 @@ class UsuarioPerfil(BaseModel):
     email: str
     pontuacao: Optional[int] = 0
     foto_perfil: Optional[str] = None 
+    regiao: Optional[str] = "Santa Maria"
 
     class Config:
         from_attributes = True
@@ -36,7 +37,8 @@ class UsuarioResumo(BaseModel):
     id: Optional[int] = None
     nome: Optional[str] = "Anônimo"
     regiao: Optional[str] = "Santa Maria"
-
+    contribuicoes: Optional[int] = 0
+    
     class Config:
         from_attributes = True
 
@@ -74,6 +76,7 @@ class DenunciaResposta(BaseModel):
     foto_url: Optional[str] = None
     latitude: float
     longitude: float
-    usuario_id: Optional[int] = None 
+    usuario_id: Optional[int] = None
+    
     class Config:
         from_attributes = True
