@@ -28,4 +28,4 @@ app.include_router(denuncias.router)
 
 @app.get("/")
 def home():
-    return {"status": "sucesso", "mensagem": "API online"}
+    return {"status": "sucesso", "mensagem": "API Online"}
