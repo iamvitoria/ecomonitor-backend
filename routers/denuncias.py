@@ -71,7 +71,7 @@ def listar_minhas_denuncias(
     denuncias = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == usuario_atual.id).all()
     return denuncias
 
-@app.put("/denuncias/{id}/status") 
+@router.put("/denuncias/{id}/status") 
 def atualizar_status_denuncia(id: int, novo_status: str, db: Session = Depends(get_db)):
     denuncia = db.query(models.Denuncia).filter(models.Denuncia.id == id).first()
     
