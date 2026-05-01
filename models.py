@@ -23,7 +23,8 @@ class Denuncia(Base):
     status = Column(String, default="Em análise")
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     data_criacao = Column(DateTime(timezone=True), server_default=func.now())
-
+    usuario = relationship("Usuario")
+    
 class HistoricoDenuncia(Base):
     __tablename__ = "historico_denuncias"
     id = Column(Integer, primary_key=True, index=True)

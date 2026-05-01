@@ -50,3 +50,4 @@ class UsuarioPerfil(BaseModel):
     regiao: Optional[str] = "Santa Maria"
     class Config:
         from_attributes = True
+        
