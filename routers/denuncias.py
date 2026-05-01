@@ -70,3 +70,17 @@ def listar_minhas_denuncias(
 ):
     denuncias = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == usuario_atual.id).all()
     return denuncias
+
+@app.put("/denuncias/{id}/status") 
+def atualizar_status_denuncia(id: int, novo_status: str, db: Session = Depends(get_db)):
+    denuncia = db.query(models.Denuncia).filter(models.Denuncia.id == id).first()
+    
+    if not denuncia:
+        raise HTTPException(status_code=404, detail="Denúncia não encontrada")
+        
+    denuncia.status = novo_status
+    
+    db.commit()
+    db.refresh(denuncia)
+    
+    return {"mensagem": "Status atualizado com sucesso", "status_atual": denuncia.status}
