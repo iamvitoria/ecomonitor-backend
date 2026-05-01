@@ -31,6 +31,19 @@ async def criar_denuncia(
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual) 
 ):
+    dicionario_categorias = {
+        "lixo": "Descarte Irregular de Lixo",
+        "desmatamento": "Desmatamento",
+        "poluicao_agua": "Poluição da Água",
+        "queimada": "Queimada",
+        "poluicao_ar": "Poluição do Ar",
+        "animais": "Maus-tratos Animais",
+        "foco_mosquito": "Foco de Mosquito",
+        "esgoto": "Esgoto Aberto"
+    }
+    
+    categoria_traduzida = dicionario_categorias.get(categoria, categoria)
+
     extensao = foto.filename.split(".")[-1]
     nome_arquivo = f"denuncia_{uuid.uuid4().hex}.{extensao}"
     caminho_foto = f"uploads/{nome_arquivo}"
@@ -39,7 +52,7 @@ async def criar_denuncia(
         shutil.copyfileobj(foto.file, buffer)
         
     nova_denuncia = models.Denuncia(
-        categoria=categoria, 
+        categoria=categoria_traduzida, 
         descricao=descricao,
         latitude=latitude, 
         longitude=longitude,
