@@ -11,6 +11,10 @@ class Usuario(Base):
     pontuacao = Column(Integer, default=0)
     foto_perfil = Column(String, nullable=True)
     regiao = Column(String, nullable=True)
+    denuncias = relationship("Denuncia", viewonly=True)
+    @property
+    def contribuicoes(self):
+        return len(self.denuncias)
 
 class Denuncia(Base):
     __tablename__ = "denuncias"
