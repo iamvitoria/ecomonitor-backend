@@ -79,11 +79,29 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db: Session = Depends(get_db)):
     posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
     
-    conquistas_bd = db.query(models.Conquista).join(
+    conquistas_existentes = db.query(models.Conquista).all()
+    conquistas_ganhas_ids = [
+        c.conquista_id for c in db.query(models.UsuarioConquista)
+        .filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
+    ]
+    
+    for conquista in conquistas_existentes:
+        if usuario_atual.pontuacao >= conquista.pontos_necessarios:
+            if conquista.id not in conquistas_ganhas_ids:
+                nova_ligacao = models.UsuarioConquista(
+                    usuario_id=usuario_atual.id,
+                    conquista_id=conquista.id
+                )
+                db.add(nova_ligacao)
+    
+    db.commit() 
+    db.refresh(usuario_atual)
+
+    conquistas_finais = db.query(models.Conquista).join(
         models.UsuarioConquista, models.Conquista.id == models.UsuarioConquista.conquista_id
     ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
     
-    lista_conquistas = [f"{c.icone_url} {c.nome}" if c.icone_url else c.nome for c in conquistas_bd]
+    lista_conquistas = [f"{c.icone_url} {c.nome}" if c.icone_url else c.nome for c in conquistas_finais]
     
     return {
         "nome": usuario_atual.nome,
@@ -133,14 +151,13 @@ def listar_conquistas(
         """)
         
         resultado = db.execute(query, {"usuario_id": usuario_atual.id}).mappings().all()
-        
         return [dict(row) for row in resultado]
 
     except Exception as e:
         print(f"Erro ao buscar conquistas: {e}")
         raise HTTPException(status_code=500, detail="Erro interno ao carregar conquistas.")
-    
-def verificar_e_dar_conquista(usuario_id, conquista_id, db):
+
+def verificar_e_dar_conquista(usuario_id: int, conquista_id: int, db: Session):
     ja_possui = db.query(models.UsuarioConquista).filter(
         models.UsuarioConquista.usuario_id == usuario_id,
         models.UsuarioConquista.conquista_id == conquista_id
