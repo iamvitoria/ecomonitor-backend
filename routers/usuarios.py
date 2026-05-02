@@ -80,8 +80,7 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
     posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
     
     conquistas_sistema = db.query(models.Conquista).all()
-    
-    conquistas_atuais_ids = [
+    conquistas_ganhas_ids = [
         c.conquista_id for c in db.query(models.UsuarioConquista)
         .filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
     ]
@@ -89,39 +88,38 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
     houve_mudanca = False
     for conquista in conquistas_sistema:
         if usuario_atual.pontuacao >= conquista.pontos_necessarios:
-            if conquista.id not in conquistas_atuais_ids:
-                nova_ligacao = models.UsuarioConquista(
-                    usuario_id=usuario_atual.id,
-                    conquista_id=conquista.id
-                )
-                db.add(nova_ligacao)
-                houve_mudanca = True
+            if conquista.id not in conquistas_ganhas_ids:
+                try:
+                    nova_ligacao = models.UsuarioConquista(
+                        usuario_id=usuario_atual.id,
+                        conquista_id=conquista.id
+                    )
+                    db.add(nova_ligacao)
+                    houve_mudanca = True
+                    db.flush() 
+                except Exception:
+                    db.rollback() 
     
     if houve_mudanca:
-        try:
-            db.commit()
-            db.refresh(usuario_atual)
-        except Exception:
-            db.rollback() 
+        db.commit()
+        db.refresh(usuario_atual)
 
-    conquistas_usuario = db.query(models.Conquista).join(
+    conquistas_finais = db.query(models.Conquista).join(
         models.UsuarioConquista, models.Conquista.id == models.UsuarioConquista.conquista_id
     ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
     
-    exibicao_unica = {}
-    for c in conquistas_usuario:
+    resultado_unico = {}
+    for c in conquistas_finais:
         texto = f"{c.icone_url} {c.nome}" if c.icone_url else c.nome
-        exibicao_unica[c.nome] = texto
+        resultado_unico[c.nome] = texto
     
-    lista_conquistas = list(exibicao_unica.values())
-
     return {
         "nome": usuario_atual.nome,
         "pontuacao": usuario_atual.pontuacao,
         "foto_perfil": usuario_atual.foto_perfil,
         "posicao_ranking": posicao,
         "cidade_ranking": usuario_atual.regiao or "Brasil",
-        "conquistas": lista_conquistas
+        "conquistas": list(resultado_unico.values())
     }
 
 @router.post("/perfil/foto")
