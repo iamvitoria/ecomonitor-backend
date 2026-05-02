@@ -80,46 +80,44 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
     posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
     
     conquistas_sistema = db.query(models.Conquista).all()
-    conquistas_ganhas_ids = [
-        c.conquista_id for c in db.query(models.UsuarioConquista)
-        .filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
-    ]
     
-    houve_mudanca = False
     for conquista in conquistas_sistema:
         if usuario_atual.pontuacao >= conquista.pontos_necessarios:
-            if conquista.id not in conquistas_ganhas_ids:
+            ja_possui = db.query(models.UsuarioConquista).filter(
+                models.UsuarioConquista.usuario_id == usuario_atual.id,
+                models.UsuarioConquista.conquista_id == conquista.id
+            ).first()
+            
+            if not ja_possui:
                 try:
                     nova_ligacao = models.UsuarioConquista(
                         usuario_id=usuario_atual.id,
                         conquista_id=conquista.id
                     )
                     db.add(nova_ligacao)
-                    houve_mudanca = True
-                    db.flush() 
+                    db.commit() 
                 except Exception:
-                    db.rollback() 
-    
-    if houve_mudanca:
-        db.commit()
-        db.refresh(usuario_atual)
+                    db.rollback()
 
-    conquistas_finais = db.query(models.Conquista).join(
+    conquistas_do_usuario = db.query(models.Conquista).join(
         models.UsuarioConquista, models.Conquista.id == models.UsuarioConquista.conquista_id
     ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
     
-    resultado_unico = {}
-    for c in conquistas_finais:
-        texto = f"{c.icone_url} {c.nome}" if c.icone_url else c.nome
-        resultado_unico[c.nome] = texto
+    nomes_vistos = set()
+    lista_formatada = []
     
+    for c in conquistas_do_usuario:
+        if c.nome not in nomes_vistos:
+            texto = f"{c.icone_url} {c.nome}" if c.icone_url else c.nome
+            lista_formatada.append(texto)
+            nomes_vistos.add(c.nome)
+
     return {
         "nome": usuario_atual.nome,
         "pontuacao": usuario_atual.pontuacao,
         "foto_perfil": usuario_atual.foto_perfil,
         "posicao_ranking": posicao,
-        "cidade_ranking": usuario_atual.regiao or "Brasil",
-        "conquistas": list(resultado_unico.values())
+        "conquistas": lista_formatada
     }
 
 @router.post("/perfil/foto")
