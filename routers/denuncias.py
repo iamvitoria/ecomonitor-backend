@@ -60,6 +60,13 @@ async def criar_denuncia(
         usuario_id=usuario_atual.id
     )
     db.add(nova_denuncia)
+    db.flush()
+    
+    novo_historico = models.HistoricoDenuncia(
+        denuncia_id=nova_denuncia.id,
+        texto="Denúncia enviada pelo usuário (+50 pts)"
+    )
+    db.add(novo_historico)
     
     usuario_atual.pontuacao += 50
     
@@ -110,6 +117,12 @@ def atualizar_status_denuncia(id: int, novo_status: str, db: Session = Depends(g
         raise HTTPException(status_code=404, detail="Denúncia não encontrada")
         
     denuncia.status = novo_status
+    
+    registro_historico = models.HistoricoDenuncia(
+        denuncia_id=id,
+        texto=f"Status atualizado para '{novo_status}'"
+    )
+    db.add(registro_historico)
     
     db.commit()
     db.refresh(denuncia)
