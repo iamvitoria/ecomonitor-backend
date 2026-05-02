@@ -128,3 +128,9 @@ def atualizar_status_denuncia(id: int, novo_status: str, db: Session = Depends(g
     db.refresh(denuncia)
     
     return {"mensagem": "Status atualizado com sucesso", "status_atual": denuncia.status}
+
+@router.get("/denuncias/{denuncia_id}/historico")
+def buscar_historico(denuncia_id: int, db: Session = Depends(get_db)):
+    return db.query(models.HistoricoDenuncia).filter(
+        models.HistoricoDenuncia.denuncia_id == denuncia_id
+    ).order_by(models.HistoricoDenuncia.data_registro.asc()).all()
