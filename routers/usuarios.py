@@ -79,17 +79,17 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db: Session = Depends(get_db)):
     posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
     
-    conquistas_existentes = db.query(models.Conquista).all()
+    conquistas_sistema = db.query(models.Conquista).all()
     
-    conquistas_ganhas_ids = [
+    conquistas_atuais_ids = [
         c.conquista_id for c in db.query(models.UsuarioConquista)
         .filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
     ]
     
     houve_mudanca = False
-    for conquista in conquistas_existentes:
+    for conquista in conquistas_sistema:
         if usuario_atual.pontuacao >= conquista.pontos_necessarios:
-            if conquista.id not in conquistas_ganhas_ids:
+            if conquista.id not in conquistas_atuais_ids:
                 nova_ligacao = models.UsuarioConquista(
                     usuario_id=usuario_atual.id,
                     conquista_id=conquista.id
@@ -98,15 +98,23 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
                 houve_mudanca = True
     
     if houve_mudanca:
-        db.commit() 
-        db.refresh(usuario_atual)
+        try:
+            db.commit()
+            db.refresh(usuario_atual)
+        except Exception:
+            db.rollback() 
 
-    conquistas_finais = db.query(models.Conquista).join(
+    conquistas_usuario = db.query(models.Conquista).join(
         models.UsuarioConquista, models.Conquista.id == models.UsuarioConquista.conquista_id
-    ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).distinct().all()
+    ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
     
-    lista_conquistas = [f"{c.icone_url} {c.nome}" if c.icone_url else c.nome for c in conquistas_finais]
+    exibicao_unica = {}
+    for c in conquistas_usuario:
+        texto = f"{c.icone_url} {c.nome}" if c.icone_url else c.nome
+        exibicao_unica[c.nome] = texto
     
+    lista_conquistas = list(exibicao_unica.values())
+
     return {
         "nome": usuario_atual.nome,
         "pontuacao": usuario_atual.pontuacao,
