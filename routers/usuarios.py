@@ -77,22 +77,21 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 @router.get("/perfil")
 def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db: Session = Depends(get_db)):
-    
     posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
     
-    conquistas_bd = db.query(models.Conquista.nome).join(
+    conquistas_bd = db.query(models.Conquista).join(
         models.UsuarioConquista, models.Conquista.id == models.UsuarioConquista.conquista_id
     ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
     
-    lista_conquistas = [c[0] for c in conquistas_bd]
+    lista_conquistas = [f"{c.icone_url} {c.nome}" if c.icone_url else c.nome for c in conquistas_bd]
     
     return {
         "nome": usuario_atual.nome,
         "pontuacao": usuario_atual.pontuacao,
         "foto_perfil": usuario_atual.foto_perfil,
         "posicao_ranking": posicao,
-        "cidade_ranking": usuario_atual.regiao or "Região não informada", # Puxa de 'Venâncio Aires'
-        "conquistas": []
+        "cidade_ranking": usuario_atual.regiao or "Brasil",
+        "conquistas": lista_conquistas
     }
 
 @router.post("/perfil/foto")
