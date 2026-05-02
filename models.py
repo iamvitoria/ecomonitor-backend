@@ -41,6 +41,14 @@ class Conquista(Base):
     __tablename__ = "conquistas"
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String)
-    descricao = Column(String, nullable=True)
-    pontos_necessarios = Column(Integer, default=0)
+    descricao = Column(String)
+    pontos_necessarios = Column(Integer)
+    icone_url = Column(String)
 
+class UsuarioConquista(Base):
+    __tablename__ = "usuarios_conquistas"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    conquista_id = Column(Integer, ForeignKey("conquistas.id"), nullable=False)
+    data_desbloqueio = Column(DateTime(timezone=True), server_default=func.now())  
