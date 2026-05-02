@@ -92,7 +92,7 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
         "foto_perfil": usuario_atual.foto_perfil,
         "posicao_ranking": posicao,
         "cidade_ranking": usuario_atual.regiao or "Região não informada", # Puxa de 'Venâncio Aires'
-        "conquistas": lista_conquistas
+        "conquistas": []
     }
 
 @router.post("/perfil/foto")

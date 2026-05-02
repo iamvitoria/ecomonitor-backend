@@ -36,3 +36,11 @@ class HistoricoDenuncia(Base):
     denuncia_id = Column(Integer, ForeignKey("denuncias.id"))
     texto = Column(String)
     data_registro = Column(DateTime(timezone=True), server_default=func.now())
+    
+class Conquista(Base):
+    __tablename__ = "conquistas"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String)
+    descricao = Column(String, nullable=True)
+    pontos_necessarios = Column(Integer, default=0)
+
