@@ -72,8 +72,7 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     dados_token = {"sub": str(usuario_bd.id), "exp": tempo_expiracao}
     token_jwt = jwt.encode(dados_token, SECRET_KEY, algorithm=ALGORITHM)
     
-    return {"access_token": token_jwt, "token_type": "bearer", "usuario_id": usuario_bd.id}
-
+    return {"access_token": token_jwt, "token_type": "bearer", "usuario_id": usuario_bd.id, "perfil": usuario_bd.perfil}
 
 @router.get("/perfil", response_model=schemas.UsuarioPerfil)
 def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual)):
