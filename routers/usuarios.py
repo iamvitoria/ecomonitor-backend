@@ -139,3 +139,18 @@ def listar_conquistas(
     except Exception as e:
         print(f"Erro ao buscar conquistas: {e}")
         raise HTTPException(status_code=500, detail="Erro interno ao carregar conquistas.")
+    
+def verificar_e_dar_conquista(usuario_id, conquista_id, db):
+    ja_possui = db.query(models.UsuarioConquista).filter(
+        models.UsuarioConquista.usuario_id == usuario_id,
+        models.UsuarioConquista.conquista_id == conquista_id
+    ).first()
+
+    if not ja_possui:
+        nova_conquista = models.UsuarioConquista(
+            usuario_id=usuario_id, 
+            conquista_id=conquista_id
+        )
+        db.add(nova_conquista)
+        return True
+    return False
