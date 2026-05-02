@@ -52,7 +52,8 @@ def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
     novo_usuario = models.Usuario(
         nome=usuario.nome, 
         email=usuario.email, 
-        senha=senha_criptografada
+        senha=senha_criptografada,
+        perfil="user"
     )
     db.add(novo_usuario)
     db.commit()
