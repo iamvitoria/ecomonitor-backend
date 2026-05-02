@@ -80,11 +80,13 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
     posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
     
     conquistas_existentes = db.query(models.Conquista).all()
+    
     conquistas_ganhas_ids = [
         c.conquista_id for c in db.query(models.UsuarioConquista)
         .filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
     ]
     
+    houve_mudanca = False
     for conquista in conquistas_existentes:
         if usuario_atual.pontuacao >= conquista.pontos_necessarios:
             if conquista.id not in conquistas_ganhas_ids:
@@ -93,13 +95,15 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
                     conquista_id=conquista.id
                 )
                 db.add(nova_ligacao)
+                houve_mudanca = True
     
-    db.commit() 
-    db.refresh(usuario_atual)
+    if houve_mudanca:
+        db.commit() 
+        db.refresh(usuario_atual)
 
     conquistas_finais = db.query(models.Conquista).join(
         models.UsuarioConquista, models.Conquista.id == models.UsuarioConquista.conquista_id
-    ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
+    ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).distinct().all()
     
     lista_conquistas = [f"{c.icone_url} {c.nome}" if c.icone_url else c.nome for c in conquistas_finais]
     
