@@ -60,8 +60,39 @@ async def criar_denuncia(
         usuario_id=usuario_atual.id
     )
     db.add(nova_denuncia)
+    
+    usuario_atual.pontuacao += 50
+    
+    conquistas_merecidas = db.query(models.Conquista).filter(models.Conquista.pontos_necessarios <= usuario_atual.pontuacao).all()
+    
+    novas_conquistas = []
+    
+    for conquista in conquistas_merecidas:
+        ja_possui = db.query(models.UsuarioConquista).filter(
+            models.UsuarioConquista.usuario_id == usuario_atual.id,
+            models.UsuarioConquista.conquista_id == conquista.id
+        ).first()
+        
+        if not ja_possui:
+            nova_conquista_usuario = models.UsuarioConquista(
+                usuario_id=usuario_atual.id, 
+                conquista_id=conquista.id
+            )
+            db.add(nova_conquista_usuario)
+            novas_conquistas.append(conquista.nome)
+            
     db.commit()
-    return {"status": "sucesso", "mensagem": "Denúncia registrada!"}
+    
+    mensagem_retorno = "Denúncia registrada com sucesso! Você ganhou 50 pontos."
+    if novas_conquistas:
+        mensagem_retorno += f" Novas conquistas desbloqueadas: {', '.join(novas_conquistas)}"
+        
+    return {
+        "status": "sucesso", 
+        "mensagem": mensagem_retorno,
+        "pontuacao_atual": usuario_atual.pontuacao,
+        "novas_conquistas": novas_conquistas
+    }
 
 @router.get("/minhas-denuncias", response_model=List[schemas.DenunciaResposta])
 def listar_minhas_denuncias(

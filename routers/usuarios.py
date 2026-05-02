@@ -75,10 +75,25 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     
     return {"access_token": token_jwt, "token_type": "bearer", "usuario_id": usuario_bd.id, "perfil": usuario_bd.perfil}
 
-@router.get("/perfil", response_model=schemas.UsuarioPerfil)
-def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual)):
-    return usuario_atual
-
+@router.get("/perfil")
+def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db: Session = Depends(get_db)):
+    
+    posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
+    
+    conquistas_bd = db.query(models.Conquista.nome).join(
+        models.UsuarioConquista, models.Conquista.id == models.UsuarioConquista.conquista_id
+    ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
+    
+    lista_conquistas = [c[0] for c in conquistas_bd]
+    
+    return {
+        "nome": usuario_atual.nome,
+        "pontuacao": usuario_atual.pontuacao,
+        "foto_perfil": usuario_atual.foto_perfil,
+        "posicao_ranking": posicao,
+        "cidade_ranking": usuario_atual.regiao or "Região não informada", # Puxa de 'Venâncio Aires'
+        "conquistas": lista_conquistas
+    }
 
 @router.post("/perfil/foto")
 def upload_foto(
