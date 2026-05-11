@@ -43,28 +43,34 @@ def obter_usuario_atual(token: str = Depends(oauth2_scheme), db: Session = Depen
 
 @router.post("/cadastro")
 def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
+    # 1. Verifica se existe
     usuario_existente = db.query(models.Usuario).filter(models.Usuario.email == usuario.email).first()
     if usuario_existente:
         raise HTTPException(status_code=400, detail="Este email já está cadastrado.")
     
+    # 2. Criptografa
     senha_criptografada = pwd_context.hash(usuario.senha)
     
+    # 3. Cria o objeto
     novo_usuario = models.Usuario(
         nome=usuario.nome, 
         email=usuario.email, 
         senha=senha_criptografada,
         perfil="user"
     )
-    db.add(novo_usuario)
-    db.commit()
-    # db.refresh(novo_usuario) # Pode comentar essa linha por enquanto
     
-    # Retorne um dicionário simples, sem o objeto do banco de dados
-    return {
-        "status": "sucesso",
-        "mensagem": "Usuário criado com sucesso!",
-        "usuario_id": novo_usuario.id 
-    }
+    try:
+        db.add(novo_usuario)
+        db.commit()
+        # Removido o db.refresh para evitar que a conexão caia por tempo
+        
+        # Retorno manual e ultra simples
+        return {"status": "sucesso", "mensagem": "Cadastrado!"}
+        
+    except Exception as e:
+        db.rollback()
+        print(f"ERRO NO COMMIT: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao salvar.")
 
 @router.post("/login")
 def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
