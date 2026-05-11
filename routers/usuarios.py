@@ -57,10 +57,14 @@ def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
     )
     db.add(novo_usuario)
     db.commit()
-    db.refresh(novo_usuario)
+    # db.refresh(novo_usuario) # Pode comentar essa linha por enquanto
     
-    return {"mensagem": "Usuário criado com sucesso!", "usuario_id": novo_usuario.id}
-
+    # Retorne um dicionário simples, sem o objeto do banco de dados
+    return {
+        "status": "sucesso",
+        "mensagem": "Usuário criado com sucesso!",
+        "usuario_id": novo_usuario.id 
+    }
 
 @router.post("/login")
 def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
