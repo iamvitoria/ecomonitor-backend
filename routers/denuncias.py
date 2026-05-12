@@ -8,6 +8,9 @@ from database import get_db
 from typing import List
 from routers.usuarios import obter_usuario_atual
 
+import cloudinary
+import cloudinary.uploader
+
 router = APIRouter(tags=["Denúncias"])
 
 @router.get("/denuncias", response_model=List[schemas.DenunciaResposta])
@@ -44,19 +47,22 @@ async def criar_denuncia(
     
     categoria_traduzida = dicionario_categorias.get(categoria, categoria)
 
-    extensao = foto.filename.split(".")[-1]
-    nome_arquivo = f"denuncia_{uuid.uuid4().hex}.{extensao}"
-    caminho_foto = f"uploads/{nome_arquivo}"
-    
-    with open(caminho_foto, "wb") as buffer:
-        shutil.copyfileobj(foto.file, buffer)
+    try:
+        resultado = cloudinary.uploader.upload(
+            foto.file, 
+            folder="ecomonitor/denuncias"
+        )
+        url_da_foto = resultado.get("secure_url")
+    except Exception as e:
+        print(f"Erro Cloudinary: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao processar imagem da denúncia.")
         
     nova_denuncia = models.Denuncia(
         categoria=categoria_traduzida, 
         descricao=descricao,
         latitude=latitude, 
         longitude=longitude,
-        foto_url=caminho_foto, 
+        foto_url=url_da_foto, 
         usuario_id=usuario_atual.id
     )
     db.add(nova_denuncia)
@@ -71,7 +77,6 @@ async def criar_denuncia(
     usuario_atual.pontuacao += 50
     
     conquistas_merecidas = db.query(models.Conquista).filter(models.Conquista.pontos_necessarios <= usuario_atual.pontuacao).all()
-    
     novas_conquistas = []
     
     for conquista in conquistas_merecidas:
@@ -90,15 +95,11 @@ async def criar_denuncia(
             
     db.commit()
     
-    mensagem_retorno = "Denúncia registrada com sucesso! Você ganhou 50 pontos."
-    if novas_conquistas:
-        mensagem_retorno += f" Novas conquistas desbloqueadas: {', '.join(novas_conquistas)}"
-        
     return {
         "status": "sucesso", 
-        "mensagem": mensagem_retorno,
+        "mensagem": f"Denúncia registrada! +50 pts. {f'Novas conquistas: {list(novas_conquistas)}' if novas_conquistas else ''}",
         "pontuacao_atual": usuario_atual.pontuacao,
-        "novas_conquistas": novas_conquistas
+        "foto_url": url_da_foto
     }
 
 @router.get("/minhas-denuncias", response_model=List[schemas.DenunciaResposta])
