@@ -13,6 +13,16 @@ from database import get_db
 import models
 import schemas
 
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config( 
+  cloud_name = "drt17bkgy", 
+  api_key = "249219188561177", 
+  api_secret = "nswH3-yGrgpboBiAGnNYQ0SwYn0",
+  secure = True
+)
+
 router = APIRouter(tags=["Usuários"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -136,19 +146,27 @@ def upload_foto(
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
 ):
-    extensao = foto.filename.split(".")[-1]
-    nome_arquivo = f"foto_perfil_{usuario_atual.id}.{extensao}"
-    caminho_completo = f"uploads/{nome_arquivo}"
+    try:
+        resultado = cloudinary.uploader.upload(
+            foto.file, 
+            folder="ecomonitor/perfis",
+            public_id=f"user_{usuario_atual.id}"
+        )
 
-    with open(caminho_completo, "wb") as buffer:
-        shutil.copyfileobj(foto.file, buffer)
+        url_foto = resultado.get("secure_url")
 
-    url_foto = f"https://ecomonitor-api.onrender.com/{caminho_completo}"
-    usuario_atual.foto_perfil = url_foto
-    db.commit()
+        usuario_atual.foto_perfil = url_foto
+        db.commit()
 
-    return {"mensagem": "Foto salva com sucesso!", "foto_perfil": url_foto}
+        return {
+            "mensagem": "Foto salva com sucesso!", 
+            "foto_perfil": url_foto
+        }
 
+    except Exception as e:
+        print(f"Erro ao subir para Cloudinary: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao processar imagem.")
+    
 @router.get("/conquistas")
 def listar_conquistas(
     db: Session = Depends(get_db), 
