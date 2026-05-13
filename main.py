@@ -17,16 +17,15 @@ if not os.path.exists("uploads"):
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# Lista de endereços permitidos
 origins = [
-    "http://localhost:5173",    # Vite local
-    "http://127.0.0.1:5173",   # Vite local (alternativo)
-    "https://tcc-three-mu.vercel.app", # Seu site oficial na Vercel
+    "http://localhost:5173",    
+    "http://127.0.0.1:5173",   
+    "https://tcc-three-mu.vercel.app", 
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Usa a lista acima
+    allow_origins=origins,
     allow_credentials=True, 
     allow_methods=["*"],
     allow_headers=["*"],

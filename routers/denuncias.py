@@ -1,5 +1,7 @@
 import shutil
 import uuid
+
+from sqlalchemy import func
 import models
 import schemas
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File
@@ -155,3 +157,15 @@ def buscar_historico(denuncia_id: int, db: Session = Depends(get_db)):
     return db.query(models.HistoricoDenuncia).filter(
         models.HistoricoDenuncia.denuncia_id == denuncia_id
     ).order_by(models.HistoricoDenuncia.data_registro.asc()).all()
+    
+@router.get("/ranking")
+def get_ranking(db: Session = Depends(get_db)):
+    ranking = db.query(
+        models.Usuario.nome,
+        (func.count(models.Denuncia.id) * 50).label("pontos")
+    ).join(models.Denuncia, models.Usuario.id == models.Denuncia.usuario_id)\
+     .group_by(models.Usuario.id)\
+     .order_by(func.count(models.Denuncia.id).desc())\
+     .all()
+    
+    return [{"nome": r.nome, "pontos": r.pontos} for r in ranking]
