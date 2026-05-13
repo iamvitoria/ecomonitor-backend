@@ -20,15 +20,15 @@ class HistoricoResposta(BaseModel):
 class DenunciaResposta(BaseModel):
     id: int
     categoria: str
-    descricao: Optional[str] = ""
-    status: str
-    data_criacao: datetime
-    foto_url: Optional[str] = None
+    descricao: Optional[str] = None
     latitude: float
     longitude: float
-    usuario_id: Optional[int] = None
-    usuario: Optional[UsuarioResumo] = None
-    historico: List[HistoricoResposta] = []
+    foto_url: Optional[str] = None
+    status: str
+    usuario_id: Optional[int]
+    usuario_nome: Optional[str] = "Anônimo"
+    endereco: Optional[str] = "Local não identificado"
+
     class Config:
         from_attributes = True
 

@@ -15,10 +15,12 @@ router = APIRouter(tags=["Denúncias"])
 
 @router.get("/denuncias")
 def listar_todas_denuncias(db: Session = Depends(get_db)):
-    denuncias = db.query(models.Denuncia).join(models.Usuario).all()
+    denuncias = db.query(models.Denuncia).outerjoin(models.Usuario).all()
     
     resultado = []
     for d in denuncias:
+        nome_usuario = d.usuario.nome if d.usuario else "Anônimo"
+        
         resultado.append({
             "id": d.id,
             "categoria": d.categoria,
@@ -29,8 +31,10 @@ def listar_todas_denuncias(db: Session = Depends(get_db)):
             "status": d.status,
             "data_criacao": d.data_criacao,
             "usuario_id": d.usuario_id,
-            "usuario_nome": d.usuario.nome if d.usuario else "Anônimo"
+            "usuario_nome": nome_usuario,
+            "endereco": getattr(d, 'endereco', "Localização via GPS")
         })
+        
     return resultado
 
 @router.get("/denuncias/{denuncia_id}", response_model=schemas.DenunciaResposta)
@@ -46,6 +50,7 @@ async def criar_denuncia(
     descricao: str = Form(""),
     latitude: float = Form(...),
     longitude: float = Form(...),
+    endereco: str = Form(""),
     foto: UploadFile = File(...),
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual) 
@@ -78,6 +83,7 @@ async def criar_denuncia(
         descricao=descricao,
         latitude=latitude, 
         longitude=longitude,
+        endereco=endereco,
         foto_url=url_da_foto, 
         usuario_id=usuario_atual.id
     )
