@@ -50,7 +50,6 @@ async def criar_denuncia(
     descricao: str = Form(""),
     latitude: float = Form(...),
     longitude: float = Form(...),
-    endereco: str = Form(""),
     foto: UploadFile = File(...),
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual) 
@@ -83,7 +82,6 @@ async def criar_denuncia(
         descricao=descricao,
         latitude=latitude, 
         longitude=longitude,
-        endereco=endereco,
         foto_url=url_da_foto, 
         usuario_id=usuario_atual.id
     )
