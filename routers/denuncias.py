@@ -160,12 +160,29 @@ def buscar_historico(denuncia_id: int, db: Session = Depends(get_db)):
     
 @router.get("/ranking")
 def get_ranking(db: Session = Depends(get_db)):
-    ranking = db.query(
-        models.Usuario.nome,
-        (func.count(models.Denuncia.id) * 50).label("pontos")
-    ).join(models.Denuncia, models.Usuario.id == models.Denuncia.usuario_id)\
-     .group_by(models.Usuario.id)\
-     .order_by(func.count(models.Denuncia.id).desc())\
-     .all()
-    
-    return [{"nome": r.nome, "pontos": r.pontos} for r in ranking]
+    ranking_cidades = (
+        db.query(
+            models.Denuncia.endereco,
+            func.count(models.Denuncia.id).label("total")
+        )
+        .filter(models.Denuncia.endereco != None)
+        .group_by(models.Denuncia.endereco)
+        .order_by(func.count(models.Denuncia.id).desc())
+        .all()
+    )
+
+    ranking_usuarios = (
+        db.query(
+            models.Usuario.nome,
+            models.Usuario.pontuacao
+        )
+        .filter(models.Usuario.perfil == "user") 
+        .order_by(models.Usuario.pontuacao.desc())
+        .limit(10)
+        .all()
+    )
+
+    return {
+        "global": [{"nome": r.endereco, "pontos": r.total} for r in ranking_cidades],
+        "local": [{"nome": r.nome, "pontos": r.pontuacao} for r in ranking_usuarios]
+    }
