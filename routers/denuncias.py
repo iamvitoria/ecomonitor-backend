@@ -52,6 +52,7 @@ async def criar_denuncia(
     descricao: str = Form(""),
     latitude: float = Form(...),
     longitude: float = Form(...),
+    endereco: str = Form(None),
     foto: UploadFile = File(...),
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual) 
@@ -84,6 +85,7 @@ async def criar_denuncia(
         descricao=descricao,
         latitude=latitude, 
         longitude=longitude,
+        endereco=endereco,
         foto_url=url_da_foto, 
         usuario_id=usuario_atual.id
     )
@@ -160,10 +162,10 @@ def buscar_historico(denuncia_id: int, db: Session = Depends(get_db)):
     
 @router.get("/ranking")
 def get_ranking(db: Session = Depends(get_db)):
-    ranking_cidades = (
+    ranking_cidades_raw = (
         db.query(
-            models.Denuncia.endereco,
-            func.count(models.Denuncia.id).label("total")
+            models.Denuncia.endereco.label("nome"),
+            func.count(models.Denuncia.id).label("pontos")
         )
         .filter(models.Denuncia.endereco != None)
         .group_by(models.Denuncia.endereco)
@@ -171,18 +173,18 @@ def get_ranking(db: Session = Depends(get_db)):
         .all()
     )
 
-    ranking_usuarios = (
+    ranking_usuarios_raw = (
         db.query(
-            models.Usuario.nome,
-            models.Usuario.pontuacao
+            models.Usuario.nome.label("nome"),
+            models.Usuario.pontuacao.label("pontos")
         )
-        .filter(models.Usuario.perfil == "user") 
+        .filter(models.Usuario.perfil == "user")
         .order_by(models.Usuario.pontuacao.desc())
         .limit(10)
         .all()
     )
 
     return {
-        "global": [{"nome": r.endereco, "pontos": r.total} for r in ranking_cidades],
-        "local": [{"nome": r.nome, "pontos": r.pontuacao} for r in ranking_usuarios]
+        "global": [{"nome": r.nome, "pontos": r.pontos} for r in ranking_cidades_raw],
+        "local": [{"nome": r.nome, "pontos": r.pontos} for r in ranking_usuarios_raw]
     }

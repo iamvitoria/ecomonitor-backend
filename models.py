@@ -13,6 +13,13 @@ class Usuario(Base):
     foto_perfil = Column(String, nullable=True)
     regiao = Column(String, nullable=True)
     denuncias = relationship("Denuncia", viewonly=True)
+    
+    denuncias = relationship(
+        "Denuncia", 
+        back_populates="usuario", 
+        cascade="all, delete-orphan" 
+    )
+    
     @property
     def contribuicoes(self):
         return len(self.denuncias)
