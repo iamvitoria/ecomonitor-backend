@@ -13,9 +13,25 @@ import cloudinary.uploader
 
 router = APIRouter(tags=["Denúncias"])
 
-@router.get("/denuncias", response_model=List[schemas.DenunciaResposta])
+@router.get("/denuncias")
 def listar_todas_denuncias(db: Session = Depends(get_db)):
-    return db.query(models.Denuncia).all()
+    denuncias = db.query(models.Denuncia).join(models.Usuario).all()
+    
+    resultado = []
+    for d in denuncias:
+        resultado.append({
+            "id": d.id,
+            "categoria": d.categoria,
+            "descricao": d.descricao,
+            "latitude": d.latitude,
+            "longitude": d.longitude,
+            "foto_url": d.foto_url,
+            "status": d.status,
+            "data_criacao": d.data_criacao,
+            "usuario_id": d.usuario_id,
+            "usuario_nome": d.usuario.nome if d.usuario else "Anônimo"
+        })
+    return resultado
 
 @router.get("/denuncias/{denuncia_id}", response_model=schemas.DenunciaResposta)
 def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
