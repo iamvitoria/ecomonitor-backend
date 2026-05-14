@@ -23,11 +23,12 @@ class DenunciaResposta(BaseModel):
     descricao: Optional[str] = None
     latitude: float
     longitude: float
+    endereco: str | None = None
     foto_url: Optional[str] = None
     status: str
+    data_criacao: datetime
     usuario_id: Optional[int]
     usuario_nome: Optional[str] = "Anônimo"
-    endereco: Optional[str] = "Local não identificado"
 
     class Config:
         from_attributes = True

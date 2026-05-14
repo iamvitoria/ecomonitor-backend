@@ -99,8 +99,9 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db: Session = Depends(get_db)):
     posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
     
-    conquistas_sistema = db.query(models.Conquista).all()
+    total_denuncias = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == usuario_atual.id).count()
     
+    conquistas_sistema = db.query(models.Conquista).all()
     for conquista in conquistas_sistema:
         if usuario_atual.pontuacao >= conquista.pontos_necessarios:
             ja_possui = db.query(models.UsuarioConquista).filter(
@@ -125,7 +126,6 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
     
     nomes_vistos = set()
     lista_formatada = []
-    
     for c in conquistas_do_usuario:
         if c.nome not in nomes_vistos:
             texto = f"{c.icone_url} {c.nome}" if c.icone_url else c.nome
@@ -137,6 +137,8 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
         "pontuacao": usuario_atual.pontuacao,
         "foto_perfil": usuario_atual.foto_perfil,
         "posicao_ranking": posicao,
+        "regiao": usuario_atual.regiao, 
+        "total_denuncias": total_denuncias, 
         "conquistas": lista_formatada
     }
 

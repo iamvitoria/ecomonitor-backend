@@ -164,11 +164,11 @@ def buscar_historico(denuncia_id: int, db: Session = Depends(get_db)):
 def get_ranking(db: Session = Depends(get_db)):
     ranking_cidades_raw = (
         db.query(
-            models.Denuncia.endereco.label("nome"),
+            models.Denuncia.cidade.label("nome"),
             func.count(models.Denuncia.id).label("pontos")
         )
-        .filter(models.Denuncia.endereco != None)
-        .group_by(models.Denuncia.endereco)
+        .filter(models.Denuncia.cidade != None)
+        .group_by(models.Denuncia.cidade)
         .order_by(func.count(models.Denuncia.id).desc())
         .all()
     )
