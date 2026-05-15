@@ -126,6 +126,7 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
         if c.nome not in nomes_vistos:
             lista_formatada.append({
                 "nome": c.nome,
+                "descricao": c.descricao,
                 "pontos": c.pontos_adquiridos 
             })
             nomes_vistos.add(c.nome)

@@ -54,6 +54,7 @@ async def criar_denuncia(
     latitude: float = Form(...),
     longitude: float = Form(...),
     endereco: str = Form(None),
+    cidade: str = Form(None),
     foto: UploadFile = File(...),
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual) 
@@ -80,41 +81,32 @@ async def criar_denuncia(
     except Exception as e:
         raise HTTPException(status_code=500, detail="Erro ao processar imagem da denúncia.")
         
-    # 1. Cria a denúncia
     nova_denuncia = models.Denuncia(
         categoria=categoria_traduzida, 
         descricao=descricao,
         latitude=latitude, 
         longitude=longitude,
         endereco=endereco,
+        cidade=cidade,
         foto_url=url_da_foto, 
         usuario_id=usuario_atual.id
     )
     db.add(nova_denuncia)
-    db.flush() # Gera o ID da denúncia sem fechar a transação
+    db.flush() 
     
-    # 2. Cria o histórico
     novo_historico = models.HistoricoDenuncia(
         denuncia_id=nova_denuncia.id,
         texto="Registro enviado pelo usuário (+50 pts)"
     )
     db.add(novo_historico)
     
-    # 3. Adiciona os 50 pontos BASE (Obrigatórios por envio)
     usuario_atual.pontuacao += 50
     
-    # 4. SALVA TUDO NO BANCO ANTES DE CHAMAR O UTILS
     db.commit()
     db.refresh(usuario_atual)
-
-    # --- AQUI ESTAVA O ERRO ---
-    # Removi toda a lógica manual de 'conquistas_merecidas' que estava aqui.
-    # O trabalho de checar conquistas e somar bônus agora é EXCLUSIVO do utils.
     
-    # 5. Chama o processador de conquistas (ele vai somar os bônus se houver)
     utils.verificar_conquistas(usuario_atual.id, db, denuncia_id=nova_denuncia.id)
     
-    # 6. Atualiza o objeto usuario para pegar os pontos bônus que o utils somou
     db.refresh(usuario_atual)
     
     return {
