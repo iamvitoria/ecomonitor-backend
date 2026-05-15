@@ -1,5 +1,6 @@
 import shutil
 import uuid
+import utils
 
 from sqlalchemy import func
 import models
@@ -63,7 +64,7 @@ async def criar_denuncia(
         "poluicao_agua": "Poluição da Água",
         "queimada": "Queimada",
         "poluicao_ar": "Poluição do Ar",
-        "animais": "Maus-tratos Animais",
+        "animais": "Maus-tratos aos Animais",
         "foco_mosquito": "Foco de Mosquito",
         "esgoto": "Esgoto Aberto"
     }
@@ -77,9 +78,9 @@ async def criar_denuncia(
         )
         url_da_foto = resultado.get("secure_url")
     except Exception as e:
-        print(f"Erro Cloudinary: {e}")
         raise HTTPException(status_code=500, detail="Erro ao processar imagem da denúncia.")
         
+    # 1. Cria a denúncia
     nova_denuncia = models.Denuncia(
         categoria=categoria_traduzida, 
         descricao=descricao,
@@ -90,38 +91,35 @@ async def criar_denuncia(
         usuario_id=usuario_atual.id
     )
     db.add(nova_denuncia)
-    db.flush()
+    db.flush() # Gera o ID da denúncia sem fechar a transação
     
+    # 2. Cria o histórico
     novo_historico = models.HistoricoDenuncia(
         denuncia_id=nova_denuncia.id,
         texto="Registro enviado pelo usuário (+50 pts)"
     )
     db.add(novo_historico)
     
+    # 3. Adiciona os 50 pontos BASE (Obrigatórios por envio)
     usuario_atual.pontuacao += 50
     
-    conquistas_merecidas = db.query(models.Conquista).filter(models.Conquista.pontos_necessarios <= usuario_atual.pontuacao).all()
-    novas_conquistas = []
-    
-    for conquista in conquistas_merecidas:
-        ja_possui = db.query(models.UsuarioConquista).filter(
-            models.UsuarioConquista.usuario_id == usuario_atual.id,
-            models.UsuarioConquista.conquista_id == conquista.id
-        ).first()
-        
-        if not ja_possui:
-            nova_conquista_usuario = models.UsuarioConquista(
-                usuario_id=usuario_atual.id, 
-                conquista_id=conquista.id
-            )
-            db.add(nova_conquista_usuario)
-            novas_conquistas.append(conquista.nome)
-            
+    # 4. SALVA TUDO NO BANCO ANTES DE CHAMAR O UTILS
     db.commit()
+    db.refresh(usuario_atual)
+
+    # --- AQUI ESTAVA O ERRO ---
+    # Removi toda a lógica manual de 'conquistas_merecidas' que estava aqui.
+    # O trabalho de checar conquistas e somar bônus agora é EXCLUSIVO do utils.
+    
+    # 5. Chama o processador de conquistas (ele vai somar os bônus se houver)
+    utils.verificar_conquistas(usuario_atual.id, db, denuncia_id=nova_denuncia.id)
+    
+    # 6. Atualiza o objeto usuario para pegar os pontos bônus que o utils somou
+    db.refresh(usuario_atual)
     
     return {
         "status": "sucesso", 
-        "mensagem": f"Denúncia registrada! +50 pts. {f'Novas conquistas: {list(novas_conquistas)}' if novas_conquistas else ''}",
+        "mensagem": "Registro enviado! +50 pts.",
         "pontuacao_atual": usuario_atual.pontuacao,
         "foto_url": url_da_foto
     }

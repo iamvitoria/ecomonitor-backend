@@ -36,8 +36,11 @@ class Denuncia(Base):
     foto_url = Column(String)         
     status = Column(String, default="Em análise")
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    
+    usuario = relationship("Usuario", back_populates="denuncias")
+    
     data_criacao = Column(DateTime(timezone=True), server_default=func.now())
-    usuario = relationship("Usuario")
+    
     
 class HistoricoDenuncia(Base):
     __tablename__ = "historico_denuncias"
@@ -51,13 +54,12 @@ class Conquista(Base):
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String)
     descricao = Column(String)
-    pontos_necessarios = Column(Integer)
-    icone_url = Column(String)
+    pontos_adquiridos = Column(Integer)
 
 class UsuarioConquista(Base):
     __tablename__ = "usuarios_conquistas"
-    
     id = Column(Integer, primary_key=True, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
-    conquista_id = Column(Integer, ForeignKey("conquistas.id"), nullable=False)
-    data_desbloqueio = Column(DateTime(timezone=True), server_default=func.now())  
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"))
+    conquista_id = Column(Integer, ForeignKey("conquistas.id"))
+    denuncia_id = Column(Integer, ForeignKey("denuncias.id", ondelete="CASCADE"), nullable=True) # Nova coluna
+    data_desbloqueio = Column(DateTime(timezone=True), server_default=func.now()) 

@@ -98,7 +98,7 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
     
     conquistas_sistema = db.query(models.Conquista).all()
     for conquista in conquistas_sistema:
-        if usuario_atual.pontuacao >= conquista.pontos_necessarios:
+        if usuario_atual.pontuacao >= conquista.pontos_adquiridos:
             ja_possui = db.query(models.UsuarioConquista).filter(
                 models.UsuarioConquista.usuario_id == usuario_atual.id,
                 models.UsuarioConquista.conquista_id == conquista.id
@@ -118,13 +118,13 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
     conquistas_do_usuario = db.query(models.Conquista).join(
         models.UsuarioConquista, models.Conquista.id == models.UsuarioConquista.conquista_id
     ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
-    
+
     nomes_vistos = set()
     lista_formatada = []
+
     for c in conquistas_do_usuario:
         if c.nome not in nomes_vistos:
-            texto = f"{c.icone_url} {c.nome}" if c.icone_url else c.nome
-            lista_formatada.append(texto)
+            lista_formatada.append(c.nome)
             nomes_vistos.add(c.nome)
 
     return {
