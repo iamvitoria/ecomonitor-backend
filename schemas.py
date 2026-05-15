@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 
 class UsuarioResumo(BaseModel):
@@ -52,3 +52,7 @@ class UsuarioPerfil(BaseModel):
     class Config:
         from_attributes = True
         
+class EditarPerfilSchema(BaseModel):
+    nome: str
+    email: EmailStr
+    cidade: str      

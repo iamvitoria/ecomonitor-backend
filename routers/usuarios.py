@@ -2,17 +2,17 @@ import shutil
 import jwt
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jwt.exceptions import InvalidTokenError
 
 from database import get_db
 import models
 import schemas
-
 import cloudinary
 import cloudinary.uploader
 
@@ -133,6 +133,7 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
 
     return {
         "nome": usuario_atual.nome,
+        "email": usuario_atual.email,
         "pontuacao": usuario_atual.pontuacao,
         "foto_perfil": usuario_atual.foto_perfil,
         "posicao_ranking": posicao,
@@ -207,3 +208,43 @@ def verificar_e_dar_conquista(usuario_id: int, conquista_id: int, db: Session):
         db.add(nova_conquista)
         return True
     return False
+
+@router.put("/perfil/editar")
+async def editar_perfil(
+    dados: schemas.EditarPerfilSchema, 
+    db: Session = Depends(get_db), 
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+):
+    # Verifica se o e-mail que ele quer mudar já não pertence a outra pessoa
+    if dados.email != usuario_atual.email:
+        email_existente = db.query(models.Usuario).filter(models.Usuario.email == dados.email).first()
+        if email_existente:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Este e-mail já está em uso por outra conta."
+            )
+
+    try:
+        # Atualiza os campos do usuário logado diretamente com os dados recebidos do Pop-up
+        usuario_atual.nome = dados.nome
+        usuario_atual.email = dados.email
+        usuario_atual.cidade = dados.cidade  # Salva o texto livre digitado no React
+
+        db.add(usuario_atual)
+        db.commit()      # Grava de fato no banco de dados
+        db.refresh(usuario_atual) 
+
+        return {
+            "status": "sucesso",
+            "mensagem": "Perfil atualizado com sucesso!",
+            "nome": usuario_atual.nome,
+            "email": usuario_atual.email,
+            "cidade": usuario_atual.cidade
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno ao salvar os dados no banco de dados."
+        )
