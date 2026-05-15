@@ -124,7 +124,10 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
 
     for c in conquistas_do_usuario:
         if c.nome not in nomes_vistos:
-            lista_formatada.append(c.nome)
+            lista_formatada.append({
+                "nome": c.nome,
+                "pontos": c.pontos_adquiridos 
+            })
             nomes_vistos.add(c.nome)
 
     return {
@@ -134,9 +137,8 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
         "posicao_ranking": posicao,
         "cidade": usuario_atual.cidade, 
         "total_denuncias": total_denuncias, 
-        "conquistas": lista_formatada
+        "conquistas": lista_formatada 
     }
-
 @router.post("/perfil/foto")
 def upload_foto(
     foto: UploadFile = File(...),
