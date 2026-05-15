@@ -94,7 +94,7 @@ async def criar_denuncia(
     
     novo_historico = models.HistoricoDenuncia(
         denuncia_id=nova_denuncia.id,
-        texto="Denúncia enviada pelo usuário (+50 pts)"
+        texto="Registro enviado pelo usuário (+50 pts)"
     )
     db.add(novo_historico)
     
@@ -161,7 +161,10 @@ def buscar_historico(denuncia_id: int, db: Session = Depends(get_db)):
     ).order_by(models.HistoricoDenuncia.data_registro.asc()).all()
     
 @router.get("/ranking")
-def get_ranking(db: Session = Depends(get_db)):
+def get_ranking(
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual), 
+    db: Session = Depends(get_db)
+):
     ranking_cidades_raw = (
         db.query(
             models.Denuncia.cidade.label("nome"),
@@ -178,7 +181,10 @@ def get_ranking(db: Session = Depends(get_db)):
             models.Usuario.nome.label("nome"),
             models.Usuario.pontuacao.label("pontos")
         )
-        .filter(models.Usuario.perfil == "user")
+        .filter(
+            models.Usuario.perfil == "user",
+            models.Usuario.cidade == usuario_atual.cidade 
+        )
         .order_by(models.Usuario.pontuacao.desc())
         .limit(10)
         .all()

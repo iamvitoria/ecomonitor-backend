@@ -53,15 +53,12 @@ def obter_usuario_atual(token: str = Depends(oauth2_scheme), db: Session = Depen
 
 @router.post("/cadastro")
 def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
-    # 1. Verifica se existe
     usuario_existente = db.query(models.Usuario).filter(models.Usuario.email == usuario.email).first()
     if usuario_existente:
         raise HTTPException(status_code=400, detail="Este email já está cadastrado.")
     
-    # 2. Criptografa
     senha_criptografada = pwd_context.hash(usuario.senha)
     
-    # 3. Cria o objeto
     novo_usuario = models.Usuario(
         nome=usuario.nome, 
         email=usuario.email, 
@@ -72,9 +69,7 @@ def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
     try:
         db.add(novo_usuario)
         db.commit()
-        # Removido o db.refresh para evitar que a conexão caia por tempo
         
-        # Retorno manual e ultra simples
         return {"status": "sucesso", "mensagem": "Cadastrado!"}
         
     except Exception as e:
@@ -137,7 +132,7 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
         "pontuacao": usuario_atual.pontuacao,
         "foto_perfil": usuario_atual.foto_perfil,
         "posicao_ranking": posicao,
-        "regiao": usuario_atual.regiao, 
+        "cidade": usuario_atual.cidade, 
         "total_denuncias": total_denuncias, 
         "conquistas": lista_formatada
     }

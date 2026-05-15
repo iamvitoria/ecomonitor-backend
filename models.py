@@ -11,7 +11,7 @@ class Usuario(Base):
     perfil = Column(String, default="user")
     pontuacao = Column(Integer, default=0)
     foto_perfil = Column(String, nullable=True)
-    regiao = Column(String, nullable=True)
+    cidade = Column(String, nullable=True)
     denuncias = relationship("Denuncia", viewonly=True)
     
     denuncias = relationship(
