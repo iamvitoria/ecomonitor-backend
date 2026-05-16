@@ -6,7 +6,7 @@ from sqlalchemy import func
 import models
 import schemas
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from typing import List
 from routers.usuarios import obter_usuario_atual
@@ -42,9 +42,13 @@ def listar_todas_denuncias(db: Session = Depends(get_db)):
 
 @router.get("/denuncias/{denuncia_id}", response_model=schemas.DenunciaResposta)
 def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
-    denuncia = db.query(models.Denuncia).filter(models.Denuncia.id == denuncia_id).first()
+    denuncia = db.query(models.Denuncia).options(
+        joinedload(models.Denuncia.usuario)
+    ).filter(models.Denuncia.id == denuncia_id).first()
+    
     if not denuncia:
         raise HTTPException(status_code=404, detail="Denúncia não encontrada")
+        
     return denuncia
 
 @router.post("/denuncias")

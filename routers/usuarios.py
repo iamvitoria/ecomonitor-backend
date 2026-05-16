@@ -62,21 +62,21 @@ def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
     novo_usuario = models.Usuario(
         nome=usuario.nome, 
         email=usuario.email, 
+        cidade=usuario.cidade,
         senha=senha_criptografada,
-        perfil="user"
+        perfil="user",
+        pontuacao=0
     )
     
     try:
         db.add(novo_usuario)
         db.commit()
-        
+        db.refresh(novo_usuario)
         return {"status": "sucesso", "mensagem": "Cadastrado!"}
-        
     except Exception as e:
         db.rollback()
-        print(f"ERRO NO COMMIT: {e}")
-        raise HTTPException(status_code=500, detail="Erro interno ao salvar.")
-
+        raise HTTPException(status_code=500, detail=f"Erro interno ao salvar: {str(e)}")
+    
 @router.post("/login")
 def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     usuario_bd = db.query(models.Usuario).filter(models.Usuario.email == form_data.username).first()

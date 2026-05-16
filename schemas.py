@@ -1,12 +1,16 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, computed_field
 from typing import List, Optional
 
 class UsuarioResumo(BaseModel):
     id: Optional[int] = None
     nome: Optional[str] = "Anônimo"
-    regiao: Optional[str] = "Santa Maria"
-    contribuicoes: Optional[int] = 0
+    cidade: Optional[str] = "Santa Maria"
+    
+    @computed_field
+    def contribuicoes(self) -> int:
+        return 0
+
     class Config:
         from_attributes = True
 
@@ -23,12 +27,12 @@ class DenunciaResposta(BaseModel):
     descricao: Optional[str] = None
     latitude: float
     longitude: float
-    endereco: str | None = None
+    endereco: Optional[str] = None
     foto_url: Optional[str] = None
     status: str
     data_criacao: datetime
-    usuario_id: Optional[int]
-    usuario_nome: Optional[str] = "Anônimo"
+    usuario_id: Optional[int] = None
+    usuario: Optional[UsuarioResumo] = None
 
     class Config:
         from_attributes = True
@@ -36,6 +40,7 @@ class DenunciaResposta(BaseModel):
 class UsuarioCriar(BaseModel):
     nome: str
     email: str
+    cidade: str
     senha: str
 
 class UsuarioLogin(BaseModel):
