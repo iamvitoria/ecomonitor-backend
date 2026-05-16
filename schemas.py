@@ -61,6 +61,7 @@ class EditarPerfilSchema(BaseModel):
     nome: str
     email: EmailStr
     cidade: str    
+    cargo: Optional[str] = None
 
 class MudarSenhaSchema(BaseModel):
     senha_atual: str

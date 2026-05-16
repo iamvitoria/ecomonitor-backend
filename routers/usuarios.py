@@ -92,8 +92,29 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 @router.get("/perfil")
 def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db: Session = Depends(get_db)):
-    posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
     
+    # === SE FOR ADMINISTRADOR ===
+    if usuario_atual.perfil == "admin":
+        # Conta dados globais do sistema para os cards do admin
+        resolvidas = db.query(models.Denuncia).filter(models.Denuncia.status == "Resolvido").count()
+        pendentes = db.query(models.Denuncia).filter(
+            models.Denuncia.status.notin_(["Resolvido", "Negado", "Cancelado"])
+        ).count()
+        
+        return {
+            "nome": usuario_atual.nome,
+            "email": usuario_atual.email,
+            "cargo": usuario_atual.cargo if usuario_atual.perfil == "admin" else None,  
+            "regiao": usuario_atual.cidade or "Santa Maria",
+            "foto_perfil": usuario_atual.foto_perfil,
+            "estatisticas": {
+                "resolvidas": resolvidas,
+                "pendentes": pendentes
+            }
+        }
+
+    # === SE FOR USUÁRIO COMUM  ===
+    posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
     total_denuncias = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == usuario_atual.id).count()
     
     conquistas_sistema = db.query(models.Conquista).all()
@@ -141,6 +162,7 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
         "total_denuncias": total_denuncias, 
         "conquistas": lista_formatada 
     }
+    
 @router.post("/perfil/foto")
 def upload_foto(
     foto: UploadFile = File(...),
@@ -215,6 +237,7 @@ async def editar_perfil(
     db: Session = Depends(get_db), 
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
 ):
+    # Verifica se o e-mail que o usuário quer colocar já pertence a OUTRA pessoa
     if dados.email != usuario_atual.email:
         email_existente = db.query(models.Usuario).filter(models.Usuario.email == dados.email).first()
         if email_existente:
@@ -224,9 +247,14 @@ async def editar_perfil(
             )
 
     try:
+        # Atualizações comuns para qualquer tipo de usuário
         usuario_atual.nome = dados.nome
         usuario_atual.email = dados.email
         usuario_atual.cidade = dados.cidade  
+
+        # Proteção: Só atualiza a coluna cargo se quem estiver editando for um ADMIN
+        if usuario_atual.perfil == "admin" and dados.cargo is not None:
+            usuario_atual.cargo = dados.cargo
 
         db.add(usuario_atual)
         db.commit()      
@@ -237,15 +265,18 @@ async def editar_perfil(
             "mensagem": "Perfil atualizado com sucesso!",
             "nome": usuario_atual.nome,
             "email": usuario_atual.email,
-            "cidade": usuario_atual.cidade
+            "cidade": usuario_atual.cidade,
+            "cargo": usuario_atual.cargo if usuario_atual.perfil == "admin" else None
         }
         
     except Exception as e:
         db.rollback()
+        print(f"Erro ao salvar perfil: {e}")  # Ajuda no debug do console do terminal
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno ao salvar os dados no banco de dados."
         )
+
 
 @router.put("/perfil/senha")
 async def mudar_senha(
@@ -253,6 +284,7 @@ async def mudar_senha(
     db: Session = Depends(get_db), 
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
 ):
+    # Valida se a senha antiga bate com o hash salvo no banco
     if not pwd_context.verify(dados.senha_atual, usuario_atual.senha):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -260,12 +292,19 @@ async def mudar_senha(
         )
         
     try:
+        # Encripta a nova senha antes de salvar
         usuario_atual.senha = pwd_context.hash(dados.nova_senha)
         db.add(usuario_atual)
         db.commit()
-        return {"status": "sucesso", "mensagem": "Senha alterada com sucesso!"}
-    except Exception:
+        
+        return {
+            "status": "sucesso", 
+            "mensagem": "Senha alterada com sucesso!"
+        }
+        
+    except Exception as e:
         db.rollback()
+        print(f"Erro ao mudar senha: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno ao atualizar a senha no banco de dados."
