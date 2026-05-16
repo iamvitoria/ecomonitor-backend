@@ -55,4 +55,8 @@ class UsuarioPerfil(BaseModel):
 class EditarPerfilSchema(BaseModel):
     nome: str
     email: EmailStr
-    cidade: str      
+    cidade: str    
+
+class MudarSenhaSchema(BaseModel):
+    senha_atual: str
+    nova_senha: str  

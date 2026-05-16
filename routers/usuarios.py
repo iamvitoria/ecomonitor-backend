@@ -215,7 +215,6 @@ async def editar_perfil(
     db: Session = Depends(get_db), 
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
 ):
-    # Verifica se o e-mail que ele quer mudar já não pertence a outra pessoa
     if dados.email != usuario_atual.email:
         email_existente = db.query(models.Usuario).filter(models.Usuario.email == dados.email).first()
         if email_existente:
@@ -225,13 +224,12 @@ async def editar_perfil(
             )
 
     try:
-        # Atualiza os campos do usuário logado diretamente com os dados recebidos do Pop-up
         usuario_atual.nome = dados.nome
         usuario_atual.email = dados.email
-        usuario_atual.cidade = dados.cidade  # Salva o texto livre digitado no React
+        usuario_atual.cidade = dados.cidade  
 
         db.add(usuario_atual)
-        db.commit()      # Grava de fato no banco de dados
+        db.commit()      
         db.refresh(usuario_atual) 
 
         return {
@@ -247,4 +245,28 @@ async def editar_perfil(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno ao salvar os dados no banco de dados."
+        )
+
+@router.put("/perfil/senha")
+async def mudar_senha(
+    dados: schemas.MudarSenhaSchema, 
+    db: Session = Depends(get_db), 
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+):
+    if not pwd_context.verify(dados.senha_atual, usuario_atual.senha):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A senha atual inserida está incorreta."
+        )
+        
+    try:
+        usuario_atual.senha = pwd_context.hash(dados.nova_senha)
+        db.add(usuario_atual)
+        db.commit()
+        return {"status": "sucesso", "mensagem": "Senha alterada com sucesso!"}
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno ao atualizar a senha no banco de dados."
         )
