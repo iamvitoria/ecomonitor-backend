@@ -35,7 +35,8 @@ def listar_todas_denuncias(db: Session = Depends(get_db)):
             "data_criacao": d.data_criacao,
             "usuario_id": d.usuario_id,
             "usuario_nome": nome_usuario,
-            "endereco": getattr(d, 'endereco', "Localização via GPS")
+            "endereco": getattr(d, 'endereco', "Localização via GPS"),
+            "cidade": getattr(d, 'cidade', "Não informada") 
         })
         
     return resultado
