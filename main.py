@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,10 +36,10 @@ app.add_middleware(
 )
 
 cloudinary.config( 
-  cloud_name = "drtl7bkgy", 
-  api_key = "249219188561177", 
-  api_secret = "nswH3-yGrgpboBiAGnNYQ0SwYn0",
-  secure = True
+    cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
+    api_key = os.environ.get("CLOUDINARY_API_KEY"), 
+    api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
+    secure = True
 )
 
 def upload_imagem_cloudinary(arquivo: UploadFile):

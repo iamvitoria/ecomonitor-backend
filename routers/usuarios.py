@@ -1,3 +1,8 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import shutil
 import jwt
 from datetime import datetime, timedelta, timezone
@@ -17,10 +22,10 @@ import cloudinary
 import cloudinary.uploader
 
 cloudinary.config( 
-  cloud_name = "drt17bkgy", 
-  api_key = "249219188561177", 
-  api_secret = "nswH3-yGrgpboBiAGnNYQ0SwYn0",
-  secure = True
+    cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
+    api_key = os.environ.get("CLOUDINARY_API_KEY"), 
+    api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
+    secure = True
 )
 
 router = APIRouter(tags=["Usuários"])
