@@ -41,7 +41,7 @@ def listar_todas_denuncias(db: Session = Depends(get_db)):
         
     return resultado
 
-@router.get("/denuncias/{denuncia_id}", response_model=schemas.DenunciaResposta)
+@router.get("/denuncias/{denuncia_id}")
 def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
     denuncia = db.query(models.Denuncia).options(
         joinedload(models.Denuncia.usuario)
@@ -50,7 +50,31 @@ def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
     if not denuncia:
         raise HTTPException(status_code=404, detail="Denúncia não encontrada")
         
-    return denuncia
+    total_contribuicoes = 0
+    if denuncia.usuario_id:
+        total_contribuicoes = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == denuncia.usuario_id).count()
+        
+    resultado = {
+        "id": denuncia.id,
+        "categoria": denuncia.categoria,
+        "descricao": denuncia.descricao,
+        "latitude": denuncia.latitude,
+        "longitude": denuncia.longitude,
+        "foto_url": denuncia.foto_url,
+        "status": denuncia.status,
+        "data_criacao": denuncia.data_criacao,
+        "usuario_id": denuncia.usuario_id,
+        "endereco": denuncia.endereco,
+        "cidade": denuncia.cidade,
+        "usuario": {
+            "nome": denuncia.usuario.nome if denuncia.usuario else "Anônimo",
+            "email": denuncia.usuario.email if denuncia.usuario else "",
+            "pontuacao": denuncia.usuario.pontuacao if denuncia.usuario else 0,
+            "contribuicoes": total_contribuicoes 
+        } if denuncia.usuario else None
+    }
+        
+    return resultado
 
 @router.post("/denuncias")
 async def criar_denuncia(
