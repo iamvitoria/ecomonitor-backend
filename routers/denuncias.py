@@ -72,7 +72,7 @@ async def criar_denuncia(
         "poluicao_ar": "Poluição do Ar",
         "animais": "Maus-tratos aos Animais",
         "foco_mosquito": "Foco de Mosquito",
-        "esgoto": "Esgoto Aberto"
+        "esgoto": "Esgoto a Céu Aberto"
     }
     
     categoria_traduzida = dicionario_categorias.get(categoria, categoria)
