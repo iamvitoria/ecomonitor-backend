@@ -96,20 +96,25 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     return {"access_token": token_jwt, "token_type": "bearer", "usuario_id": usuario_bd.id, "perfil": usuario_bd.perfil}
 
 @router.get("/perfil")
-def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db: Session = Depends(get_db)):
-    
-    # === SE FOR ADMINISTRADOR ===
+def ler_perfil(
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual),
+    db: Session = Depends(get_db)
+):
+
+    # ================= ADMIN =================
     if usuario_atual.perfil == "admin":
-        # Conta dados globais do sistema para os cards do admin
-        resolvidas = db.query(models.Denuncia).filter(models.Denuncia.status == "Resolvido").count()
+        resolvidas = db.query(models.Denuncia).filter(
+            models.Denuncia.status == "Resolvido"
+        ).count()
+
         pendentes = db.query(models.Denuncia).filter(
             models.Denuncia.status.notin_(["Resolvido", "Negado", "Cancelado"])
         ).count()
-        
+
         return {
             "nome": usuario_atual.nome,
             "email": usuario_atual.email,
-            "cargo": usuario_atual.cargo if usuario_atual.perfil == "admin" else None,  
+            "cargo": usuario_atual.cargo,
             "regiao": usuario_atual.cidade or "Santa Maria",
             "foto_perfil": usuario_atual.foto_perfil,
             "estatisticas": {
@@ -118,32 +123,22 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
             }
         }
 
-    # === SE FOR USUÁRIO COMUM  ===
-    posicao = db.query(models.Usuario).filter(models.Usuario.pontuacao > usuario_atual.pontuacao).count() + 1
-    total_denuncias = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == usuario_atual.id).count()
-    
-    conquistas_sistema = db.query(models.Conquista).all()
-    for conquista in conquistas_sistema:
-        if usuario_atual.pontuacao >= conquista.pontos_adquiridos:
-            ja_possui = db.query(models.UsuarioConquista).filter(
-                models.UsuarioConquista.usuario_id == usuario_atual.id,
-                models.UsuarioConquista.conquista_id == conquista.id
-            ).first()
-            
-            if not ja_possui:
-                try:
-                    nova_ligacao = models.UsuarioConquista(
-                        usuario_id=usuario_atual.id,
-                        conquista_id=conquista.id
-                    )
-                    db.add(nova_ligacao)
-                    db.commit() 
-                except Exception:
-                    db.rollback()
+    # ================= USUÁRIO =================
+
+    posicao = db.query(models.Usuario).filter(
+        models.Usuario.pontuacao > usuario_atual.pontuacao
+    ).count() + 1
+
+    total_denuncias = db.query(models.Denuncia).filter(
+        models.Denuncia.usuario_id == usuario_atual.id
+    ).count()
 
     conquistas_do_usuario = db.query(models.Conquista).join(
-        models.UsuarioConquista, models.Conquista.id == models.UsuarioConquista.conquista_id
-    ).filter(models.UsuarioConquista.usuario_id == usuario_atual.id).all()
+        models.UsuarioConquista,
+        models.Conquista.id == models.UsuarioConquista.conquista_id
+    ).filter(
+        models.UsuarioConquista.usuario_id == usuario_atual.id
+    ).all()
 
     nomes_vistos = set()
     lista_formatada = []
@@ -153,7 +148,7 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
             lista_formatada.append({
                 "nome": c.nome,
                 "descricao": c.descricao,
-                "pontos": c.pontos_adquiridos 
+                "pontos": c.pontos_adquiridos
             })
             nomes_vistos.add(c.nome)
 
@@ -163,9 +158,9 @@ def ler_perfil(usuario_atual: models.Usuario = Depends(obter_usuario_atual), db:
         "pontuacao": usuario_atual.pontuacao,
         "foto_perfil": usuario_atual.foto_perfil,
         "posicao_ranking": posicao,
-        "cidade": usuario_atual.cidade, 
-        "total_denuncias": total_denuncias, 
-        "conquistas": lista_formatada 
+        "cidade": usuario_atual.cidade,
+        "total_denuncias": total_denuncias,
+        "conquistas": lista_formatada
     }
     
 @router.post("/perfil/foto")
@@ -197,44 +192,39 @@ def upload_foto(
     
 @router.get("/conquistas")
 def listar_conquistas(
-    db: Session = Depends(get_db), 
+    db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
 ):
     try:
         query = text("""
-            SELECT 
-                c.id, 
-                c.nome, 
-                c.descricao, 
-                c.icone_url,
-                CASE WHEN uc.id IS NOT NULL THEN true ELSE false END AS desbloqueado
+            SELECT
+                c.id,
+                c.nome,
+                c.descricao,
+                c.pontos_adquiridos,
+                CASE
+                    WHEN uc.id IS NOT NULL THEN true
+                    ELSE false
+                END AS desbloqueado
             FROM conquistas c
-            LEFT JOIN usuarios_conquistas uc 
-                ON c.id = uc.conquista_id AND uc.usuario_id = :usuario_id
-            ORDER BY c.pontos_necessarios ASC;
+            LEFT JOIN usuarios_conquistas uc
+                ON c.id = uc.conquista_id
+                AND uc.usuario_id = :usuario_id
+            ORDER BY c.id ASC
         """)
-        
-        resultado = db.execute(query, {"usuario_id": usuario_atual.id}).mappings().all()
+
+        resultado = db.execute(
+            query,
+            {"usuario_id": usuario_atual.id}
+        ).mappings().all()
+
         return [dict(row) for row in resultado]
 
     except Exception as e:
-        print(f"Erro ao buscar conquistas: {e}")
-        raise HTTPException(status_code=500, detail="Erro interno ao carregar conquistas.")
-
-def verificar_e_dar_conquista(usuario_id: int, conquista_id: int, db: Session):
-    ja_possui = db.query(models.UsuarioConquista).filter(
-        models.UsuarioConquista.usuario_id == usuario_id,
-        models.UsuarioConquista.conquista_id == conquista_id
-    ).first()
-
-    if not ja_possui:
-        nova_conquista = models.UsuarioConquista(
-            usuario_id=usuario_id, 
-            conquista_id=conquista_id
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
         )
-        db.add(nova_conquista)
-        return True
-    return False
 
 @router.put("/perfil/editar")
 async def editar_perfil(

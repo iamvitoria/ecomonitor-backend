@@ -12,7 +12,7 @@ class Usuario(Base):
     pontuacao = Column(Integer, default=0)
     foto_perfil = Column(String, nullable=True)
     cidade = Column(String, nullable=True)
-    cargo = Column(String, nullable=True, default="Analista Ambiental")
+    cargo = Column(String, nullable=True, default="")
     
     denuncias = relationship(
         "Denuncia", 
