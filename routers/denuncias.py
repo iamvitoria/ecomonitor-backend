@@ -76,6 +76,74 @@ def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
         
     return resultado
 
+@router.put("/denuncias/{denuncia_id}")
+async def editar_denuncia(
+    denuncia_id: int,
+    categoria: str = Form(...),
+    descricao: str = Form(""),
+    endereco: str = Form(None),
+    foto: UploadFile = File(None),  
+    db: Session = Depends(get_db),
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+):
+    denuncia = db.query(models.Denuncia).filter(models.Denuncia.id == denuncia_id).first()
+    
+    if not denuncia:
+        raise HTTPException(status_code=404, detail="Denúncia não encontrada")
+        
+    if denuncia.usuario_id != usuario_atual.id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para editar este registro")
+
+    dicionario_categorias = {
+        "lixo": "Descarte Irregular de Lixo",
+        "desmatamento": "Desmatamento",
+        "poluicao_agua": "Poluição da Água",
+        "queimada": "Queimada",
+        "poluicao_ar": "Poluição do Ar",
+        "animais": "Maus-tratos aos Animais",
+        "foco_mosquito": "Foco de Mosquito",
+        "esgoto": "Esgoto a Céu Aberto"
+    }
+    categoria_traduzida = dicionario_categorias.get(categoria, categoria)
+
+    denuncia.categoria = categoria_traduzida
+    denuncia.descricao = descricao
+    if endereco:
+        denuncia.endereco = endereco
+
+    if foto and foto.filename:
+        try:
+            resultado = cloudinary.uploader.upload(
+                foto.file, 
+                folder="ecomonitor/denuncias"
+            )
+            denuncia.foto_url = resultado.get("secure_url")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Erro ao processar nova imagem no Cloudinary.")
+            
+    novo_historico = models.HistoricoDenuncia(
+        denuncia_id=denuncia.id,
+        texto="Registro editado pelo usuário"
+    )
+    db.add(novo_historico)
+    
+    db.commit()
+    db.refresh(denuncia)
+    
+    return {
+        "status": "sucesso",
+        "denuncia": {
+            "id": denuncia.id,
+            "categoria": denuncia.categoria,
+            "descricao": denuncia.descricao,
+            "foto_url": denuncia.foto_url,
+            "endereco": denuncia.endereco,
+            "status": denuncia.status,
+            "latitude": denuncia.latitude,   
+            "longitude": denuncia.longitude
+        }
+    }
+
 @router.post("/denuncias")
 async def criar_denuncia(
     categoria: str = Form(...),
