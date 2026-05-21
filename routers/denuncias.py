@@ -263,6 +263,8 @@ def get_ranking(
         .all()
     )
 
+    cidade_usuario_limpa = func.lower(func.trim(usuario_atual.cidade)) if usuario_atual.cidade else ""
+
     ranking_usuarios_raw = (
         db.query(
             models.Usuario.nome.label("nome"),
@@ -270,7 +272,7 @@ def get_ranking(
         )
         .filter(
             models.Usuario.perfil == "user",
-            models.Usuario.cidade == usuario_atual.cidade 
+            func.lower(func.trim(models.Usuario.cidade)) == cidade_usuario_limpa
         )
         .order_by(models.Usuario.pontuacao.desc())
         .limit(10)
@@ -279,5 +281,6 @@ def get_ranking(
 
     return {
         "global": [{"nome": r.nome, "pontos": r.pontos} for r in ranking_cidades_raw],
-        "local": [{"nome": r.nome, "pontos": r.pontos} for r in ranking_usuarios_raw]
+        "local": [{"nome": r.nome, "pontos": r.pontos} for r in ranking_usuarios_raw],
+        "cidade_usuario": usuario_atual.cidade or "Sua Cidade" 
     }
