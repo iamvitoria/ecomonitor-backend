@@ -26,7 +26,7 @@ def listar_todas_denuncias(db: Session = Depends(get_db)):
         
         resultado.append({
             "id": d.id,
-            "categoria": d.categoria,
+            "categoria": d.categoria.nome if d.categoria else "Sem Categoria",
             "descricao": d.descricao,
             "latitude": d.latitude,
             "longitude": d.longitude,
@@ -56,7 +56,8 @@ def obter_detalhes_denuncia(denuncia_id: int, db: Session = Depends(get_db)):
         
     resultado = {
         "id": denuncia.id,
-        "categoria": denuncia.categoria,
+        "categoria_id": denuncia.categoria_id,
+        "categoria_nome": denuncia.categoria.nome,
         "descricao": denuncia.descricao,
         "latitude": denuncia.latitude,
         "longitude": denuncia.longitude,
@@ -104,9 +105,17 @@ async def editar_denuncia(
         "foco_mosquito": "Foco de Mosquito",
         "esgoto": "Esgoto a Céu Aberto"
     }
+    
     categoria_traduzida = dicionario_categorias.get(categoria, categoria)
 
-    denuncia.categoria = categoria_traduzida
+    categoria_obj = db.query(models.Categoria).filter(
+        models.Categoria.nome == categoria_traduzida
+    ).first()
+
+    if not categoria_obj:
+        raise HTTPException(status_code=400, detail="Categoria inválida")
+
+    denuncia.categoria_id = categoria_obj.id
     denuncia.descricao = descricao
     if endereco:
         denuncia.endereco = endereco
@@ -134,7 +143,7 @@ async def editar_denuncia(
         "status": "sucesso",
         "denuncia": {
             "id": denuncia.id,
-            "categoria": denuncia.categoria,
+            "categoria": denuncia.categoria.nome,
             "descricao": denuncia.descricao,
             "foto_url": denuncia.foto_url,
             "endereco": denuncia.endereco,
@@ -146,7 +155,7 @@ async def editar_denuncia(
 
 @router.post("/denuncias")
 async def criar_denuncia(
-    categoria: str = Form(...),
+    categoria_id: int = Form(...),
     descricao: str = Form(""),
     latitude: float = Form(...),
     longitude: float = Form(...),
@@ -156,19 +165,13 @@ async def criar_denuncia(
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual) 
 ):
-    dicionario_categorias = {
-        "lixo": "Descarte Irregular de Lixo",
-        "desmatamento": "Desmatamento",
-        "poluicao_agua": "Poluição da Água",
-        "queimada": "Queimada",
-        "poluicao_ar": "Poluição do Ar",
-        "animais": "Maus-tratos aos Animais",
-        "foco_mosquito": "Foco de Mosquito",
-        "esgoto": "Esgoto a Céu Aberto"
-    }
-    
-    categoria_traduzida = dicionario_categorias.get(categoria, categoria)
+    categoria_obj = db.query(models.Categoria).filter(
+        models.Categoria.id == categoria_id
+    ).first()
 
+    if not categoria_obj:
+        raise HTTPException(status_code=400, detail="Categoria inválida ou não encontrada")
+    
     try:
         resultado = cloudinary.uploader.upload(
             foto.file, 
@@ -176,10 +179,10 @@ async def criar_denuncia(
         )
         url_da_foto = resultado.get("secure_url")
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Erro ao processar imagem da denúncia.")
-        
+        raise HTTPException(status_code=500, detail="Erro ao processar imagem da denúncia.")    
+    
     nova_denuncia = models.Denuncia(
-        categoria=categoria_traduzida, 
+        categoria_id=categoria_obj.id,
         descricao=descricao,
         latitude=latitude, 
         longitude=longitude,
@@ -218,8 +221,32 @@ def listar_minhas_denuncias(
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
 ):
-    denuncias = db.query(models.Denuncia).filter(models.Denuncia.usuario_id == usuario_atual.id).all()
-    return denuncias
+    denuncias = db.query(models.Denuncia).options(
+        joinedload(models.Denuncia.categoria)
+    ).filter(
+        models.Denuncia.usuario_id == usuario_atual.id
+    ).all()
+
+    return [
+        {
+            "id": d.id,
+            "categoria": d.categoria.nome if d.categoria else "Sem Categoria",
+            "descricao": d.descricao,
+            "latitude": d.latitude,
+            "longitude": d.longitude,
+            "endereco": d.endereco,
+            "cidade": d.cidade,
+            "foto_url": d.foto_url,
+            "status": d.status,
+            "usuario_id": d.usuario_id,
+            "data_criacao": d.data_criacao
+        }
+        for d in denuncias
+    ]
+    
+@router.get("/categorias")
+def listar_categorias(db: Session = Depends(get_db)):
+    return db.query(models.Categoria).all()
 
 @router.put("/denuncias/{id}/status") 
 def atualizar_status_denuncia(id: int, novo_status: str, db: Session = Depends(get_db)):

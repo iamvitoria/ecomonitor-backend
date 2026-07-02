@@ -6,7 +6,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from routers import usuarios, denuncias
+from routers import usuarios, denuncias, categorias
 from database import engine
 import models
 import cloudinary
@@ -52,6 +52,7 @@ def upload_imagem_cloudinary(arquivo: UploadFile):
 
 app.include_router(usuarios.router)
 app.include_router(denuncias.router)
+app.include_router(categorias.router)
 
 @app.get("/")
 def home():
