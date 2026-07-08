@@ -1,12 +1,12 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, computed_field
-from typing import List, Optional
+from typing import Optional
 
 class UsuarioResumo(BaseModel):
     id: Optional[int] = None
     nome: Optional[str] = "Anônimo"
-    cidade: Optional[str] = "Santa Maria"
-    
+    cidade: Optional[str] = None
+
     @computed_field
     def contribuicoes(self) -> int:
         return 0
@@ -14,28 +14,60 @@ class UsuarioResumo(BaseModel):
     class Config:
         from_attributes = True
 
-class HistoricoResposta(BaseModel):
+
+class CategoriaResposta(BaseModel):
     id: int
-    texto: str
-    data_registro: datetime
+    nome: str
+
     class Config:
         from_attributes = True
 
-class DenunciaResposta(BaseModel):
+
+class EnderecoResposta(BaseModel):
     id: int
-    categoria: str
-    descricao: Optional[str] = None
+    cep: str
+    logradouro: str
+    numero: str
+    complemento: Optional[str] = None
+    bairro: str
+    cidade: str
+    referencia: Optional[str] = None
     latitude: float
     longitude: float
-    endereco: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class HistoricoRegistroResposta(BaseModel):
+    id: int
+    status_anterior: Optional[str] = None
+    status_novo: Optional[str] = None
+    texto: str
+    data_registro: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class RegistroResposta(BaseModel):
+    id: int
+    descricao: Optional[str] = None
     foto_url: Optional[str] = None
     status: str
     data_criacao: datetime
-    usuario_id: Optional[int] = None
+
+    categoria_id: int
+    usuarios_id: int
+    endereco_id: Optional[int] = None
+
+    categoria: Optional[CategoriaResposta] = None
     usuario: Optional[UsuarioResumo] = None
+    endereco: Optional[EnderecoResposta] = None
 
     class Config:
         from_attributes = True
+
 
 class UsuarioCriar(BaseModel):
     nome: str
@@ -43,26 +75,32 @@ class UsuarioCriar(BaseModel):
     cidade: str
     senha: str
 
+
 class UsuarioLogin(BaseModel):
     email: str
     senha: str
+
 
 class UsuarioPerfil(BaseModel):
     id: int
     nome: str
     email: str
     pontuacao: Optional[int] = 0
-    foto_perfil: Optional[str] = None 
-    regiao: Optional[str] = "Santa Maria"
+    foto_perfil: Optional[str] = None
+    cidade: Optional[str] = None
+    cargo: Optional[str] = None
+
     class Config:
         from_attributes = True
-        
+
+
 class EditarPerfilSchema(BaseModel):
     nome: str
     email: EmailStr
-    cidade: str    
+    cidade: str
     cargo: Optional[str] = None
+
 
 class MudarSenhaSchema(BaseModel):
     senha_atual: str
-    nova_senha: str  
+    nova_senha: str

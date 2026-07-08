@@ -6,7 +6,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from routers import usuarios, denuncias, categorias
+from routers import registros, usuarios, categorias
 from database import engine
 import models
 import cloudinary
@@ -24,6 +24,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 origins = [
     "http://localhost:5173",    
     "http://127.0.0.1:5173",   
+    "http://localhost:3000",
     "https://tcc-three-mu.vercel.app", 
 ]
 
@@ -51,7 +52,7 @@ def upload_imagem_cloudinary(arquivo: UploadFile):
         return None
 
 app.include_router(usuarios.router)
-app.include_router(denuncias.router)
+app.include_router(registros.router)
 app.include_router(categorias.router)
 
 @app.get("/")

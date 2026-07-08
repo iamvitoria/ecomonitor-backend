@@ -1,14 +1,13 @@
 import os
 from dotenv import load_dotenv
+from sqlalchemy import func
 
 load_dotenv()
 
-import shutil
 import jwt
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import text
@@ -31,7 +30,7 @@ cloudinary.config(
 router = APIRouter(tags=["Usuários"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = "chave_secreta_do_tcc_da_vitoria" 
+SECRET_KEY = os.environ.get("SECRET_KEY", "chave_super_secreta_do_tcc_da_vitoria_2026_segura")
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -103,12 +102,12 @@ def ler_perfil(
 
     # ================= ADMIN =================
     if usuario_atual.perfil == "admin":
-        resolvidas = db.query(models.Denuncia).filter(
-            models.Denuncia.status == "Resolvido"
+        resolvidas = db.query(models.Registro).filter(
+            models.Registro.status == "Resolvido"
         ).count()
 
-        pendentes = db.query(models.Denuncia).filter(
-            models.Denuncia.status.notin_(["Resolvido", "Negado", "Cancelado"])
+        pendentes = db.query(models.Registro).filter(
+            models.Registro.status.notin_(["Resolvido", "Negado", "Cancelado"])
         ).count()
 
         return {
@@ -129,8 +128,8 @@ def ler_perfil(
         models.Usuario.pontuacao > usuario_atual.pontuacao
     ).count() + 1
 
-    total_denuncias = db.query(models.Denuncia).filter(
-        models.Denuncia.usuario_id == usuario_atual.id
+    total_registros = db.query(models.Registro).filter(
+        models.Registro.usuarios_id == usuario_atual.id
     ).count()
 
     conquistas_do_usuario = db.query(models.Conquista).join(
@@ -159,7 +158,7 @@ def ler_perfil(
         "foto_perfil": usuario_atual.foto_perfil,
         "posicao_ranking": posicao,
         "cidade": usuario_atual.cidade,
-        "total_denuncias": total_denuncias,
+        "total_registros": total_registros,
         "conquistas": lista_formatada
     }
     
@@ -304,3 +303,49 @@ async def mudar_senha(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno ao atualizar a senha no banco de dados."
         )
+        
+@router.get("/ranking")
+def obter_ranking(
+    db: Session = Depends(get_db),
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+):
+    try:
+        cidade_user = usuario_atual.cidade or "Desconhecida"
+        
+        usuarios_locais = db.query(models.Usuario).filter(
+            models.Usuario.perfil == "user",
+            models.Usuario.cidade == cidade_user
+        ).order_by(models.Usuario.pontuacao.desc()).limit(10).all()
+        
+        lista_local = [
+            {"nome": u.nome, "pontos": u.pontuacao, "foto_perfil": u.foto_perfil} 
+            for u in usuarios_locais
+        ]
+
+        cidades_ranking = db.query(
+            models.Usuario.cidade,
+            func.count(models.Registro.id).label('total')
+        ).join(
+            models.Registro, models.Registro.usuarios_id == models.Usuario.id
+        ).filter(
+            models.Usuario.cidade.isnot(None)
+        ).group_by(
+            models.Usuario.cidade
+        ).order_by(
+            func.count(models.Registro.id).desc()
+        ).limit(10).all()
+
+        lista_global = [
+            {"cidade": r.cidade, "total": r.total} 
+            for r in cidades_ranking
+        ]
+            
+        return {
+            "local": lista_local,
+            "global": lista_global,
+            "cidade_usuario": cidade_user
+        }
+        
+    except Exception as e:
+        print(f"Erro ao buscar ranking: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao buscar o ranking.")

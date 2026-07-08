@@ -1,9 +1,8 @@
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
 import models
 
 
-def desbloquear_conquista(usuario, conquista, denuncia_id, db):
+def desbloquear_conquista(usuario, conquista, registro_id, db):
     if not conquista:
         return
 
@@ -18,7 +17,7 @@ def desbloquear_conquista(usuario, conquista, denuncia_id, db):
     nova = models.UsuarioConquista(
         usuario_id=usuario.id,
         conquista_id=conquista.id,
-        denuncia_id=denuncia_id
+        registro_id=registro_id
     )
 
     db.add(nova)
@@ -28,7 +27,7 @@ def desbloquear_conquista(usuario, conquista, denuncia_id, db):
     db.add(usuario)
 
 
-def verificar_conquistas(usuario_id: int, db: Session, denuncia_id: int):
+def verificar_conquistas(usuario_id: int, db: Session, registro_id: int):
     usuario = db.query(models.Usuario).filter(
         models.Usuario.id == usuario_id
     ).first()
@@ -36,40 +35,40 @@ def verificar_conquistas(usuario_id: int, db: Session, denuncia_id: int):
     if not usuario:
         return
 
-    denuncia = db.query(models.Denuncia).filter(
-        models.Denuncia.id == denuncia_id
+    registro = db.query(models.Registro).filter(
+        models.Registro.id == registro_id
     ).first()
 
-    if not denuncia:
+    if not registro:
         return
 
     conquistas = {
         c.nome: c for c in db.query(models.Conquista).all()
     }
 
-    total_registros = db.query(models.Denuncia).filter(
-        models.Denuncia.usuario_id == usuario_id
+    total_registros = db.query(models.Registro).filter(
+        models.Registro.usuarios_id == usuario_id,
     ).count()
 
-    total_validados = db.query(models.Denuncia).filter(
-        models.Denuncia.usuario_id == usuario_id,
-        models.Denuncia.status == "Validado"
+    total_validados = db.query(models.Registro).filter(
+        models.Registro.usuarios_id == usuario_id,
+        models.Registro.status == "Validado"
     ).count()
 
-    total_resolvidos = db.query(models.Denuncia).filter(
-        models.Denuncia.usuario_id == usuario_id,
-        models.Denuncia.status == "Resolvido"
+    total_resolvidos = db.query(models.Registro).filter(
+        models.Registro.usuarios_id == usuario_id,
+        models.Registro.status == "Resolvido"
     ).count()
 
-    categorias_distintas = db.query(models.Denuncia.categoria).filter(
-        models.Denuncia.usuario_id == usuario_id
+    categorias_distintas = db.query(models.Registro.categoria_id).filter(
+        models.Registro.usuarios_id == usuario_id
     ).distinct().count()
 
     # registros em 3 semanas consecutivas
     tres_semanas = False
-    datas = db.query(models.Denuncia.data_criacao).filter(
-        models.Denuncia.usuario_id == usuario_id
-    ).order_by(models.Denuncia.data_criacao.asc()).all()
+    datas = db.query(models.Registro.data_criacao).filter(
+        models.Registro.usuarios_id == usuario_id
+    ).order_by(models.Registro.data_criacao.asc()).all()
 
     semanas = set()
     for d in datas:
@@ -104,42 +103,40 @@ def verificar_conquistas(usuario_id: int, db: Session, denuncia_id: int):
     # REGRAS
 
     if total_registros >= 1:
-        desbloquear_conquista(usuario, conquistas.get("Primeiro Passo"), denuncia_id, db)
+        desbloquear_conquista(usuario, conquistas.get("Primeiro Passo"), registro_id, db)
 
-    if denuncia.status == "Validado" and total_validados >= 1:
-        desbloquear_conquista(usuario, conquistas.get("Cidadão Ativo"), denuncia_id, db)
+    if registro.status == "Validado" and total_validados >= 1:
+        desbloquear_conquista(usuario, conquistas.get("Cidadão Ativo"), registro_id, db)
 
     if total_registros >= 5:
-        desbloquear_conquista(usuario, conquistas.get("Guardião do Bairro"), denuncia_id, db)
+        desbloquear_conquista(usuario, conquistas.get("Guardião do Bairro"), registro_id, db)
 
     if tres_semanas:
-        desbloquear_conquista(usuario, conquistas.get("Eco-Sentinela"), denuncia_id, db)
+        desbloquear_conquista(usuario, conquistas.get("Eco-Sentinela"), registro_id, db)
 
-    if denuncia.status == "Validado" and total_validados >= 2:
-        desbloquear_conquista(usuario, conquistas.get("Olhar Atento"), denuncia_id, db)
-
-    descricao = (denuncia.descricao or "").strip().lower()
-
-    if descricao and descricao != "nenhuma descrição fornecida.":
-        desbloquear_conquista(usuario, conquistas.get("Paparazzi Ambiental"), denuncia_id, db)
+    if registro.descricao and registro.descricao.strip():
+        desbloquear_conquista(usuario, conquistas.get("Paparazzi Ambiental"), registro_id, db)
 
     if total_registros >= 10:
-        desbloquear_conquista(usuario, conquistas.get("Repórter do Bairro"), denuncia_id, db)
+        desbloquear_conquista(usuario, conquistas.get("Repórter do Bairro"), registro_id, db)
 
     if categorias_distintas >= 3:
-        desbloquear_conquista(usuario, conquistas.get("Mestre da Diversidade"), denuncia_id, db)
+        desbloquear_conquista(usuario, conquistas.get("Mestre da Diversidade"), registro_id, db)
 
-    if denuncia.status == "Validado" and total_validados >= 3:
-        desbloquear_conquista(usuario, conquistas.get("Fiscal da Natureza"), denuncia_id, db)
+    if total_validados >= 2:
+        desbloquear_conquista(usuario, conquistas.get("Olhar Atento"), registro_id, db)
+
+    if total_validados >= 3:
+        desbloquear_conquista(usuario, conquistas.get("Fiscal da Natureza"), registro_id, db)
 
     if total_registros >= 15:
-        desbloquear_conquista(usuario, conquistas.get("Herói Comunitário"), denuncia_id, db)
+        desbloquear_conquista(usuario, conquistas.get("Herói Comunitário"), registro_id, db)
 
     if total_resolvidos >= 10:
-        desbloquear_conquista(usuario, conquistas.get("Zelador da Cidade"), denuncia_id, db)
+        desbloquear_conquista(usuario, conquistas.get("Zelador da Cidade"), registro_id, db)
 
     if primeiro_local:
-        desbloquear_conquista(usuario, conquistas.get("Lenda do EcoMonitor"), denuncia_id, db)
+        desbloquear_conquista(usuario, conquistas.get("Lenda do EcoMonitor"), registro_id, db)
 
     db.commit()
     db.refresh(usuario)

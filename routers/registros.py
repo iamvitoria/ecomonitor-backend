@@ -1,0 +1,207 @@
+import utils
+from sqlalchemy import func
+import models
+import schemas
+
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File
+from sqlalchemy.orm import Session, joinedload
+from database import get_db
+from typing import List
+from routers.usuarios import obter_usuario_atual
+
+import cloudinary
+import cloudinary.uploader
+
+router = APIRouter(tags=["Registros"])
+
+@router.get("/registros")
+def listar_todos_registros(db: Session = Depends(get_db)):
+    registros = db.query(models.Registro).all()
+    resultado = []
+    for r in registros:
+        resultado.append({
+            "id": r.id,
+            "descricao": r.descricao,
+            "status": r.status,
+            
+            "latitude": r.endereco.latitude if r.endereco else None,
+            "longitude": r.endereco.longitude if r.endereco else None,
+            
+            "categoria": r.categoria.nome if r.categoria else "Sem Categoria",
+            
+            "endereco": {
+                "logradouro": r.endereco.logradouro,
+                "numero": r.endereco.numero,
+                "bairro": r.endereco.bairro
+            } if r.endereco else None  
+        })
+    return resultado
+
+@router.post("/registros")
+async def criar_registro(
+    categoria_id: int = Form(...),
+    descricao: str = Form(""),
+
+    cep: str = Form(...),
+    logradouro: str = Form(...),
+    numero: str = Form(...),
+    complemento: str = Form(None),
+    bairro: str = Form(...),
+    cidade: str = Form(...),
+    referencia: str = Form(None),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+
+    foto: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+):
+    categoria = db.query(models.Categoria).filter(
+        models.Categoria.id == categoria_id
+    ).first()
+
+    if not categoria:
+        raise HTTPException(400, "Categoria inválida")
+
+    try:
+        resultado = cloudinary.uploader.upload(
+            foto.file,
+            folder="ecomonitor/registros"
+        )
+        foto_url = resultado.get("secure_url")
+
+    except Exception:
+        raise HTTPException(500, "Erro ao enviar imagem")
+
+    novo_endereco = models.Endereco(
+        cep=cep,
+        logradouro=logradouro,
+        numero=numero,
+        complemento=complemento,
+        bairro=bairro,
+        cidade=cidade,
+        referencia=referencia,
+        latitude=latitude,
+        longitude=longitude
+    )
+
+    db.add(novo_endereco)
+    db.flush()
+
+    novo_registro = models.Registro(
+        categoria_id=categoria.id,
+        usuarios_id=usuario_atual.id,
+        endereco_id=novo_endereco.id,
+        descricao=descricao,
+        foto_url=foto_url
+    )
+
+    db.add(novo_registro)
+    db.flush()
+
+    novo_historico = models.HistoricoRegistro(
+        registro_id=novo_registro.id,
+        texto="Registro criado",
+        status_novo="Em análise"
+    )
+
+    db.add(novo_historico)
+
+    usuario_atual.pontuacao += 50
+
+    db.commit()
+
+    utils.verificar_conquistas(
+        usuario_atual.id,
+        db,
+        registro_id=novo_registro.id
+    )
+
+    return {
+        "status": "sucesso",
+        "mensagem": "Registro criado com sucesso"
+    }
+
+
+@router.put("/registros/{registro_id}")
+async def editar_registro(
+    registro_id: int,
+    categoria_id: int = Form(...),
+    descricao: str = Form(""),
+    foto: UploadFile = File(None),
+    db: Session = Depends(get_db),
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+):
+    registro = db.query(models.Registro).options(
+        joinedload(models.Registro.endereco)
+    ).filter(
+        models.Registro.id == registro_id
+    ).first()
+
+    if not registro:
+        raise HTTPException(404, "Registro não encontrado")
+
+    if registro.usuarios_id != usuario_atual.id:
+        raise HTTPException(403, "Sem permissão")
+
+    registro.categoria_id = categoria_id
+    registro.descricao = descricao
+
+    if foto and foto.filename:
+        resultado = cloudinary.uploader.upload(
+            foto.file,
+            folder="ecomonitor/registros"
+        )
+        registro.foto_url = resultado.get("secure_url")
+
+    db.add(models.HistoricoRegistro(
+        registros_id=registro.id,
+        texto="Registro editado"
+    ))
+
+    db.commit()
+
+    return {"mensagem": "Registro atualizado"}
+
+
+@router.get("/meus-registros", response_model=List[schemas.RegistroResposta])
+def listar_meus_registros(
+    db: Session = Depends(get_db),
+    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+):
+    registros = db.query(models.Registro).options(
+        joinedload(models.Registro.categoria),
+        joinedload(models.Registro.endereco)
+    ).filter(
+        models.Registro.usuarios_id == usuario_atual.id
+    ).all()
+
+    return registros
+
+
+@router.put("/registros/{id}/status")
+def atualizar_status(
+    id: int,
+    novo_status: str,
+    db: Session = Depends(get_db)
+):
+    registro = db.query(models.Registro).filter(
+        models.Registro.id == id
+    ).first()
+
+    if not registro:
+        raise HTTPException(404, "Registro não encontrado")
+
+    status_anterior = registro.status
+    registro.status = novo_status
+
+    db.add(models.HistoricoRegistro(
+        registros_id=id,
+        status_anterior=status_anterior,
+        status_novo=novo_status,
+        texto=f"Status alterado de {status_anterior} para {novo_status}"
+    ))
+
+    db.commit()
+
+    return {"mensagem": "Status atualizado"}
