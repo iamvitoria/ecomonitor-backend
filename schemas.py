@@ -25,19 +25,18 @@ class CategoriaResposta(BaseModel):
 
 class EnderecoResposta(BaseModel):
     id: int
-    cep: str
-    logradouro: str
-    numero: str
+    logradouro: Optional[str] = None
+    numero: Optional[str] = None
+    bairro: Optional[str] = None
+    cidade: Optional[str] = None
+    cep: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     complemento: Optional[str] = None
-    bairro: str
-    cidade: str
     referencia: Optional[str] = None
-    latitude: float
-    longitude: float
 
     class Config:
-        from_attributes = True
-
+        orm_mode = True
 
 class HistoricoRegistroResposta(BaseModel):
     id: int

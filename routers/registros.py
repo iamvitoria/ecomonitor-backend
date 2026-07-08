@@ -128,6 +128,13 @@ async def editar_registro(
     registro_id: int,
     categoria_id: int = Form(...),
     descricao: str = Form(""),
+    logradouro: str = Form(None),
+    numero: str = Form(None),
+    bairro: str = Form(None),
+    cidade: str = Form(None),
+    # Novos campos de coordenadas recebidos do frontend:
+    latitude: float = Form(None),
+    longitude: float = Form(None),
     foto: UploadFile = File(None),
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
@@ -147,21 +154,32 @@ async def editar_registro(
     registro.categoria_id = categoria_id
     registro.descricao = descricao
 
+    if registro.endereco:
+        if logradouro is not None: registro.endereco.logradouro = logradouro
+        if numero is not None: registro.endereco.numero = numero
+        if bairro is not None: registro.endereco.bairro = bairro
+        if cidade is not None: registro.endereco.cidade = cidade
+        if latitude is not None: registro.endereco.latitude = latitude
+        if longitude is not None: registro.endereco.longitude = longitude
+
     if foto and foto.filename:
-        resultado = cloudinary.uploader.upload(
-            foto.file,
-            folder="ecomonitor/registros"
-        )
-        registro.foto_url = resultado.get("secure_url")
+        try:
+            resultado = cloudinary.uploader.upload(
+                foto.file,
+                folder="ecomonitor/registros"
+            )
+            registro.foto_url = resultado.get("secure_url")
+        except Exception:
+            raise HTTPException(500, "Erro ao enviar imagem")
 
     db.add(models.HistoricoRegistro(
-        registros_id=registro.id,
+        registro_id=registro.id,
         texto="Registro editado"
     ))
 
     db.commit()
 
-    return {"mensagem": "Registro atualizado"}
+    return {"mensagem": "Registro atualizado com sucesso"}
 
 
 @router.get("/meus-registros", response_model=List[schemas.RegistroResposta])
@@ -205,3 +223,18 @@ def atualizar_status(
     db.commit()
 
     return {"mensagem": "Status atualizado"}
+
+@router.get("/registros/{id}/historico")
+def obter_historico_registro(
+    id: int, 
+    db: Session = Depends(get_db)
+):
+    registro = db.query(models.Registro).filter(models.Registro.id == id).first()
+    if not registro:
+        raise HTTPException(404, "Registro não encontrado")
+
+    historico = db.query(models.HistoricoRegistro).filter(
+        models.HistoricoRegistro.registro_id == id 
+    ).order_by(models.HistoricoRegistro.id.desc()).all()
+    
+    return historico
