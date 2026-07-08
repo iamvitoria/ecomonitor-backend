@@ -56,7 +56,7 @@ class RegistroResposta(BaseModel):
     status: str
     data_criacao: datetime
 
-    categoria_id: int
+    categoria_id: Optional[int] = None
     usuarios_id: int
     endereco_id: Optional[int] = None
 
