@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from typing import List
 from routers.usuarios import obter_usuario_atual
+from geopy.geocoders import Nominatim
+
+geolocator = Nominatim(user_agent="ecomonitor")
 
 import cloudinary
 import cloudinary.uploader
@@ -16,26 +19,59 @@ router = APIRouter(tags=["Registros"])
 
 @router.get("/registros")
 def listar_todos_registros(db: Session = Depends(get_db)):
-    registros = db.query(models.Registro).all()
+
+    registros = (
+        db.query(models.Registro)
+        .options(
+            joinedload(models.Registro.endereco),
+            joinedload(models.Registro.categoria),
+            joinedload(models.Registro.usuario)   
+        )
+        .all()
+    )
+
     resultado = []
+
     for r in registros:
         resultado.append({
             "id": r.id,
             "descricao": r.descricao,
             "status": r.status,
-            
+
             "latitude": r.endereco.latitude if r.endereco else None,
             "longitude": r.endereco.longitude if r.endereco else None,
-            
-            "categoria": r.categoria.nome if r.categoria else "Sem Categoria",
-            
+
+            "categoria": r.categoria.nome if r.categoria else None,
+
+            "usuario_nome": r.usuario.nome if r.usuario else None,
+
             "endereco": {
                 "logradouro": r.endereco.logradouro,
                 "numero": r.endereco.numero,
-                "bairro": r.endereco.bairro
-            } if r.endereco else None  
+                "bairro": r.endereco.bairro,
+                "cidade": r.endereco.cidade
+            } if r.endereco else None
         })
+
     return resultado
+
+def geocoding(endereco):
+    try:
+        location = geolocator.geocode(endereco)
+
+        if location:
+            print("Endereço encontrado:", endereco)
+            print("Latitude:", location.latitude)
+            print("Longitude:", location.longitude)
+
+            return location.latitude, location.longitude
+
+        print("Endereço não encontrado:", endereco)
+
+    except Exception as e:
+        print("Erro no geocoding:", e)
+
+    return None, None
 
 @router.post("/registros")
 async def criar_registro(
@@ -72,6 +108,25 @@ async def criar_registro(
 
     except Exception:
         raise HTTPException(500, "Erro ao enviar imagem")
+
+    # ------------------------------------
+    # GEOCODIFICAÇÃO DO ENDEREÇO
+    # ------------------------------------
+    endereco_texto = f"{logradouro}, {numero}, {bairro}, {cidade}"
+
+    lat_geo, lon_geo = geocoding(endereco_texto)
+    
+    print("====================================")
+    print("ENDEREÇO ENVIADO:", endereco_texto)
+    print("LAT:", lat_geo)
+    print("LON:", lon_geo)
+    print("====================================")
+
+    if lat_geo is not None and lon_geo is not None:
+        latitude = lat_geo
+        longitude = lon_geo
+
+    # ------------------------------------
 
     novo_endereco = models.Endereco(
         cep=cep,
@@ -122,7 +177,6 @@ async def criar_registro(
         "mensagem": "Registro criado com sucesso"
     }
 
-
 @router.put("/registros/{registro_id}")
 async def editar_registro(
     registro_id: int,
@@ -132,7 +186,6 @@ async def editar_registro(
     numero: str = Form(None),
     bairro: str = Form(None),
     cidade: str = Form(None),
-    # Novos campos de coordenadas recebidos do frontend:
     latitude: float = Form(None),
     longitude: float = Form(None),
     foto: UploadFile = File(None),
@@ -155,12 +208,52 @@ async def editar_registro(
     registro.descricao = descricao
 
     if registro.endereco:
-        if logradouro is not None: registro.endereco.logradouro = logradouro
-        if numero is not None: registro.endereco.numero = numero
-        if bairro is not None: registro.endereco.bairro = bairro
-        if cidade is not None: registro.endereco.cidade = cidade
-        if latitude is not None: registro.endereco.latitude = latitude
-        if longitude is not None: registro.endereco.longitude = longitude
+
+        if logradouro is not None:
+            registro.endereco.logradouro = logradouro
+
+        if numero is not None:
+            registro.endereco.numero = numero
+
+        if bairro is not None:
+            registro.endereco.bairro = bairro
+
+        if cidade is not None:
+            registro.endereco.cidade = cidade
+
+        # ------------------------------------
+        # GEOCODIFICAÇÃO
+        # ------------------------------------
+
+        if logradouro and cidade:
+
+            endereco_texto = (
+                f"{registro.endereco.logradouro}, "
+                f"{registro.endereco.numero}, "
+                f"{registro.endereco.bairro}, "
+                f"{registro.endereco.cidade}"
+            )
+
+            lat_geo, lon_geo = geocoding(endereco_texto)
+
+            if lat_geo is not None and lon_geo is not None:
+                registro.endereco.latitude = lat_geo
+                registro.endereco.longitude = lon_geo
+
+            else:
+                if latitude is not None:
+                    registro.endereco.latitude = latitude
+
+                if longitude is not None:
+                    registro.endereco.longitude = longitude
+
+        else:
+
+            if latitude is not None:
+                registro.endereco.latitude = latitude
+
+            if longitude is not None:
+                registro.endereco.longitude = longitude
 
     if foto and foto.filename:
         try:
@@ -169,6 +262,7 @@ async def editar_registro(
                 folder="ecomonitor/registros"
             )
             registro.foto_url = resultado.get("secure_url")
+
         except Exception:
             raise HTTPException(500, "Erro ao enviar imagem")
 
@@ -179,9 +273,24 @@ async def editar_registro(
 
     db.commit()
 
-    return {"mensagem": "Registro atualizado com sucesso"}
-
-
+    return {
+        "mensagem": "Registro atualizado com sucesso",
+        "registro": {
+            "id": registro.id,
+            "categoria_id": registro.categoria_id,
+            "descricao": registro.descricao,
+            "foto_url": registro.foto_url,
+            "latitude": registro.endereco.latitude if registro.endereco else None,
+            "longitude": registro.endereco.longitude if registro.endereco else None,
+            "endereco": {
+                "logradouro": registro.endereco.logradouro if registro.endereco else "",
+                "numero": registro.endereco.numero if registro.endereco else "",
+                "bairro": registro.endereco.bairro if registro.endereco else "",
+                "cidade": registro.endereco.cidade if registro.endereco else ""
+            }
+        }
+    }
+    
 @router.get("/meus-registros", response_model=List[schemas.RegistroResposta])
 def listar_meus_registros(
     db: Session = Depends(get_db),
@@ -195,7 +304,6 @@ def listar_meus_registros(
     ).all()
 
     return registros
-
 
 @router.put("/registros/{id}/status")
 def atualizar_status(

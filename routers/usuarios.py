@@ -66,7 +66,7 @@ def criar_usuario(usuario: schemas.UsuarioCriar, db: Session = Depends(get_db)):
     novo_usuario = models.Usuario(
         nome=usuario.nome, 
         email=usuario.email, 
-        cidade=usuario.cidade,
+        cidade=" ".join(usuario.cidade.strip().title().split()),
         senha=senha_criptografada,
         perfil="user",
         pontuacao=0
@@ -92,6 +92,7 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     dados_token = {"sub": str(usuario_bd.id), "exp": tempo_expiracao}
     token_jwt = jwt.encode(dados_token, SECRET_KEY, algorithm=ALGORITHM)
     
+    print("Usuário autenticado:", usuario_bd.id, usuario_bd.email)
     return {"access_token": token_jwt, "token_type": "bearer", "usuario_id": usuario_bd.id, "perfil": usuario_bd.perfil}
 
 @router.get("/perfil")

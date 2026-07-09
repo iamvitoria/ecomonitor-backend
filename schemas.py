@@ -53,12 +53,11 @@ class RegistroResposta(BaseModel):
     id: int
     descricao: Optional[str] = None
     foto_url: Optional[str] = None
-    status: str
-    data_criacao: datetime
-
-    categoria_id: Optional[int] = None
+    status: Optional[str] = "Em análise"
     usuarios_id: int
+    categoria_id: Optional[int] = None
     endereco_id: Optional[int] = None
+    data_criacao: Optional[datetime] = None 
 
     categoria: Optional[CategoriaResposta] = None
     usuario: Optional[UsuarioResumo] = None
@@ -66,7 +65,6 @@ class RegistroResposta(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 class UsuarioCriar(BaseModel):
     nome: str
