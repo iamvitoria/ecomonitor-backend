@@ -6,7 +6,7 @@ import schemas
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from database import get_db
-from typing import List
+from typing import List, Optional
 from routers.usuarios import obter_usuario_atual
 from geopy.geocoders import Nominatim
 
@@ -88,7 +88,7 @@ async def criar_registro(
     latitude: float = Form(...),
     longitude: float = Form(...),
 
-    foto: UploadFile = File(...),
+    foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     usuario_atual: models.Usuario = Depends(obter_usuario_atual)
 ):
@@ -99,15 +99,18 @@ async def criar_registro(
     if not categoria:
         raise HTTPException(400, "Categoria inválida")
 
-    try:
-        resultado = cloudinary.uploader.upload(
-            foto.file,
-            folder="ecomonitor/registros"
-        )
-        foto_url = resultado.get("secure_url")
+    foto_url = None
 
-    except Exception:
-        raise HTTPException(500, "Erro ao enviar imagem")
+    if foto and foto.filename:
+        try:
+            resultado = cloudinary.uploader.upload(
+                foto.file,
+                folder="ecomonitor/registros"
+            )
+            foto_url = resultado.get("secure_url")
+
+        except Exception:
+            raise HTTPException(500, "Erro ao enviar imagem")
 
     # ------------------------------------
     # GEOCODIFICAÇÃO DO ENDEREÇO
