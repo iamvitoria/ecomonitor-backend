@@ -37,11 +37,16 @@ def listar_todos_registros(db: Session = Depends(get_db)):
             "id": r.id,
             "descricao": r.descricao,
             "status": r.status,
+            
+            "data_criacao": r.data_criacao,
 
             "latitude": r.endereco.latitude if r.endereco else None,
             "longitude": r.endereco.longitude if r.endereco else None,
 
-            "categoria": r.categoria.nome if r.categoria else None,
+            "categoria": {
+                "id": r.categoria.id,
+                "nome": r.categoria.nome
+            } if r.categoria else None,
 
             "usuario_nome": r.usuario.nome if r.usuario else None,
 
@@ -325,7 +330,7 @@ def atualizar_status(
     registro.status = novo_status
 
     db.add(models.HistoricoRegistro(
-        registros_id=id,
+        registro_id=id,
         status_anterior=status_anterior,
         status_novo=novo_status,
         texto=f"Status alterado de {status_anterior} para {novo_status}"
@@ -349,3 +354,48 @@ def obter_historico_registro(
     ).order_by(models.HistoricoRegistro.id.desc()).all()
     
     return historico
+
+@router.get("/registros/{registro_id}")
+def obter_registro_por_id(registro_id: int, db: Session = Depends(get_db)):
+    registro = (
+        db.query(models.Registro)
+        .options(
+            joinedload(models.Registro.endereco),
+            joinedload(models.Registro.categoria),
+            joinedload(models.Registro.usuario)   
+        )
+        .filter(models.Registro.id == registro_id)
+        .first()
+    )
+
+    if not registro:
+        raise HTTPException(status_code=404, detail="Registro não encontrado")
+
+    return {
+        "id": registro.id,
+        "descricao": registro.descricao,
+        "status": registro.status,
+        "data_criacao": registro.data_criacao,
+        "foto_url": registro.foto_url,
+        
+        "latitude": registro.endereco.latitude if registro.endereco else None,
+        "longitude": registro.endereco.longitude if registro.endereco else None,
+
+        "categoria": {
+            "id": registro.categoria.id,
+            "nome": registro.categoria.nome
+        } if registro.categoria else None,
+
+        "usuario": {
+            "nome": registro.usuario.nome if registro.usuario else "Não identificado",
+            "regiao": getattr(registro.usuario, 'regiao', 'Não informada') if registro.usuario else "Não informada",
+            "contribuicoes": getattr(registro.usuario, 'pontuacao', 0) if registro.usuario else 0
+        },
+
+        "endereco": {
+            "logradouro": registro.endereco.logradouro,
+            "numero": registro.endereco.numero,
+            "bairro": registro.endereco.bairro,
+            "cidade": registro.endereco.cidade
+        } if registro.endereco else None
+    }
