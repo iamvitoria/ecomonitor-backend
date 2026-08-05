@@ -10,7 +10,7 @@ from routers import registros, usuarios, categorias
 from database import engine
 import models
 import cloudinary
-from fastapi import UploadFile, File
+from fastapi import UploadFile
 
 models.Base.metadata.create_all(bind=engine)
 

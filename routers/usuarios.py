@@ -15,7 +15,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import text
 from passlib.context import CryptContext
 from jwt.exceptions import InvalidTokenError
-from auth import get_current_user, get_current_user_optional
+from auth import get_current_user_optional
 import models
 import schemas
 import cloudinary
@@ -120,37 +120,68 @@ def fazer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 @router.get("/perfil")
 def ler_perfil(
-    usuario_atual: models.Usuario = Depends(obter_usuario_atual),
+    usuario_atual: models.Usuario = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
+    # ================= 1. MODO VISITANTE / ANÔNIMO =================
+    if not usuario_atual:
+        total_registros_geral = db.query(models.Registro).count()
+        
+        # Conta apenas cidades únicas de usuários que efetivamente possuem registros (igual ao ranking)
+        total_cidades_registradas = db.query(
+            func.count(func.distinct(func.lower(func.trim(models.Usuario.cidade))))
+        ).join(
+            models.Registro, models.Registro.usuarios_id == models.Usuario.id
+        ).filter(
+            models.Usuario.cidade.isnot(None),
+            func.trim(models.Usuario.cidade) != ""
+        ).scalar() or 0
 
-    # ================= ADMIN =================
-    if usuario_atual.perfil == "admin":
-        resolvidas = db.query(models.Registro).filter(
-            models.Registro.status == "Resolvido"
-        ).count()
-
-        pendentes = db.query(models.Registro).filter(
-            models.Registro.status.notin_(["Resolvido", "Negado", "Cancelado"])
+        total_resolvidos_geral = db.query(models.Registro).filter(
+            func.lower(models.Registro.status) == "resolvido"
         ).count()
 
         return {
+            "is_anonimo": True,
+            "nome": "Visitante",
+            "foto_perfil": "/foto.png",  
+            "mensagem": "Olá, Visitante! Crie sua conta para acumular pontos, desbloquear conquistas e ajudar sua cidade.",
+            "estatisticas_comunidade": {
+                "total_registros": total_registros_geral,
+                "cidades_participantes": total_cidades_registradas,
+                "total_resolvidos": total_resolvidos_geral
+            }
+        }
+
+    # ================= 2. MODO ADMIN =================
+    if getattr(usuario_atual, "perfil", None) == "admin":
+        resolvidas = db.query(models.Registro).filter(
+            func.lower(models.Registro.status) == "resolvido"
+        ).count()
+
+        pendentes = db.query(models.Registro).filter(
+            ~func.lower(models.Registro.status).in_(["resolvido", "negado", "cancelado"])
+        ).count()
+
+        return {
+            "is_anonimo": False,
             "nome": usuario_atual.nome,
             "email": usuario_atual.email,
-            "cargo": usuario_atual.cargo,
-            "regiao": usuario_atual.cidade or "Santa Maria",
-            "foto_perfil": usuario_atual.foto_perfil,
+            "cargo": getattr(usuario_atual, "cargo", None) or "Administrador",
+            "regiao": getattr(usuario_atual, "cidade", None) or "Santa Maria",
+            "foto_perfil": usuario_atual.foto_perfil or "/foto.png",
             "estatisticas": {
                 "resolvidas": resolvidas,
                 "pendentes": pendentes
             }
         }
 
-    # ================= USUÁRIO =================
+    # ================= 3. MODO USUÁRIO COMUM LOGADO =================
+    pontos = getattr(usuario_atual, "pontuacao", None) or getattr(usuario_atual, "pontos", 0) or 0
 
     posicao = db.query(models.Usuario).filter(
-        models.Usuario.pontuacao > usuario_atual.pontuacao
-    ).count() + 1
+        models.Usuario.pontuacao > pontos
+    ).count() + 1 if hasattr(models.Usuario, "pontuacao") else 1
 
     total_registros = db.query(models.Registro).filter(
         models.Registro.usuarios_id == usuario_atual.id
@@ -170,18 +201,19 @@ def ler_perfil(
         if c.nome not in nomes_vistos:
             lista_formatada.append({
                 "nome": c.nome,
-                "descricao": c.descricao,
-                "pontos": c.pontos_adquiridos
+                "descricao": getattr(c, "descricao", ""),
+                "pontos": getattr(c, "pontos_adquiridos", 0)
             })
             nomes_vistos.add(c.nome)
 
     return {
+        "is_anonimo": False,
         "nome": usuario_atual.nome,
         "email": usuario_atual.email,
-        "pontuacao": usuario_atual.pontuacao,
-        "foto_perfil": usuario_atual.foto_perfil,
+        "pontuacao": pontos,
+        "foto_perfil": usuario_atual.foto_perfil or "/foto.png",
         "posicao_ranking": posicao,
-        "cidade": usuario_atual.cidade,
+        "cidade": getattr(usuario_atual, "cidade", None),
         "total_registros": total_registros,
         "conquistas": lista_formatada
     }
@@ -335,7 +367,6 @@ def obter_ranking(
     usuario_atual: models.Usuario = Depends(get_current_user_optional) 
 ):
     try:
-        # Recupera a cidade do usuário logado de forma segura (se ele existir)
         cidade_usuario_logado = usuario_atual.cidade if usuario_atual else None
         cidade_alvo = cidade or cidade_usuario_logado or "Desconhecida"
         
