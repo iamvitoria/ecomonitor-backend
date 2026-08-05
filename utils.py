@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 import models
 
-
 def desbloquear_conquista(usuario, conquista, registro_id, db):
     if not conquista:
         return
@@ -22,7 +21,6 @@ def desbloquear_conquista(usuario, conquista, registro_id, db):
 
     db.add(nova)
 
-    # soma pontos da conquista
     usuario.pontuacao += conquista.pontos_adquiridos
     db.add(usuario)
 
@@ -64,7 +62,6 @@ def verificar_conquistas(usuario_id: int, db: Session, registro_id: int):
         models.Registro.usuarios_id == usuario_id
     ).distinct().count()
 
-    # registros em 3 semanas consecutivas
     tres_semanas = False
     datas = db.query(models.Registro.data_criacao).filter(
         models.Registro.usuarios_id == usuario_id
@@ -91,7 +88,6 @@ def verificar_conquistas(usuario_id: int, db: Session, registro_id: int):
         else:
             contador = 1
 
-    # ranking local
     usuarios_mesma_cidade = db.query(models.Usuario).filter(
         models.Usuario.cidade == usuario.cidade
     ).order_by(models.Usuario.pontuacao.desc()).all()
@@ -99,8 +95,6 @@ def verificar_conquistas(usuario_id: int, db: Session, registro_id: int):
     primeiro_local = False
     if usuarios_mesma_cidade:
         primeiro_local = usuarios_mesma_cidade[0].id == usuario.id
-
-    # REGRAS
 
     if total_registros >= 1:
         desbloquear_conquista(usuario, conquistas.get("Primeiro Passo"), registro_id, db)

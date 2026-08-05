@@ -2,7 +2,7 @@ import utils
 from sqlalchemy import func
 import models
 import schemas
-
+from routers.usuarios import obter_usuario_atual, obter_usuario_opcional
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from database import get_db
@@ -37,19 +37,14 @@ def listar_todos_registros(db: Session = Depends(get_db)):
             "id": r.id,
             "descricao": r.descricao,
             "status": r.status,
-            
             "data_criacao": r.data_criacao,
-
             "latitude": r.endereco.latitude if r.endereco else None,
             "longitude": r.endereco.longitude if r.endereco else None,
-
             "categoria": {
                 "id": r.categoria.id,
                 "nome": r.categoria.nome
             } if r.categoria else None,
-
             "usuario_nome": r.usuario.nome if r.usuario else None,
-
             "endereco": {
                 "logradouro": r.endereco.logradouro,
                 "numero": r.endereco.numero,
@@ -82,7 +77,6 @@ def geocoding(endereco):
 async def criar_registro(
     categoria_id: int = Form(...),
     descricao: str = Form(""),
-
     cep: str = Form(...),
     logradouro: str = Form(...),
     numero: str = Form(...),
@@ -92,10 +86,10 @@ async def criar_registro(
     referencia: str = Form(None),
     latitude: float = Form(...),
     longitude: float = Form(...),
-
+    anonimo: Optional[bool] = Form(False),
     foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+    usuario_atual: Optional[models.Usuario] = Depends(obter_usuario_opcional) 
 ):
     categoria = db.query(models.Categoria).filter(
         models.Categoria.id == categoria_id
@@ -151,9 +145,10 @@ async def criar_registro(
     db.add(novo_endereco)
     db.flush()
 
+
     novo_registro = models.Registro(
         categoria_id=categoria.id,
-        usuarios_id=usuario_atual.id,
+        usuarios_id=usuario_atual.id if usuario_atual else None, 
         endereco_id=novo_endereco.id,
         descricao=descricao,
         foto_url=foto_url
@@ -164,21 +159,21 @@ async def criar_registro(
 
     novo_historico = models.HistoricoRegistro(
         registro_id=novo_registro.id,
-        texto="Registro criado",
+        texto="Registro criado de forma anônima" if not usuario_atual else "Registro criado",
         status_novo="Em análise"
     )
 
     db.add(novo_historico)
 
-    usuario_atual.pontuacao += 50
+    if usuario_atual:
+        usuario_atual.pontuacao += 50
+        utils.verificar_conquistas(
+            usuario_atual.id,
+            db,
+            registro_id=novo_registro.id
+        )
 
     db.commit()
-
-    utils.verificar_conquistas(
-        usuario_atual.id,
-        db,
-        registro_id=novo_registro.id
-    )
 
     return {
         "status": "sucesso",
@@ -198,7 +193,8 @@ async def editar_registro(
     longitude: float = Form(None),
     foto: UploadFile = File(None),
     db: Session = Depends(get_db),
-    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+    # 1. MUDANÇA AQUI: usuario opcional
+    usuario_atual: Optional[models.Usuario] = Depends(obter_usuario_opcional) 
 ):
     registro = db.query(models.Registro).options(
         joinedload(models.Registro.endereco)
@@ -209,14 +205,15 @@ async def editar_registro(
     if not registro:
         raise HTTPException(404, "Registro não encontrado")
 
-    if registro.usuarios_id != usuario_atual.id:
-        raise HTTPException(403, "Sem permissão")
+    # 2. MUDANÇA AQUI: Só bloqueia se o registro tiver um dono E o dono for diferente
+    if registro.usuarios_id is not None:
+        if not usuario_atual or registro.usuarios_id != usuario_atual.id:
+            raise HTTPException(403, "Sem permissão para editar este registro")
 
     registro.categoria_id = categoria_id
     registro.descricao = descricao
 
     if registro.endereco:
-
         if logradouro is not None:
             registro.endereco.logradouro = logradouro
 
@@ -232,34 +229,26 @@ async def editar_registro(
         # ------------------------------------
         # GEOCODIFICAÇÃO
         # ------------------------------------
-
         if logradouro and cidade:
-
             endereco_texto = (
                 f"{registro.endereco.logradouro}, "
                 f"{registro.endereco.numero}, "
                 f"{registro.endereco.bairro}, "
                 f"{registro.endereco.cidade}"
             )
-
             lat_geo, lon_geo = geocoding(endereco_texto)
 
             if lat_geo is not None and lon_geo is not None:
                 registro.endereco.latitude = lat_geo
                 registro.endereco.longitude = lon_geo
-
             else:
                 if latitude is not None:
                     registro.endereco.latitude = latitude
-
                 if longitude is not None:
                     registro.endereco.longitude = longitude
-
         else:
-
             if latitude is not None:
                 registro.endereco.latitude = latitude
-
             if longitude is not None:
                 registro.endereco.longitude = longitude
 
@@ -270,13 +259,12 @@ async def editar_registro(
                 folder="ecomonitor/registros"
             )
             registro.foto_url = resultado.get("secure_url")
-
         except Exception:
             raise HTTPException(500, "Erro ao enviar imagem")
 
     db.add(models.HistoricoRegistro(
         registro_id=registro.id,
-        texto="Registro editado"
+        texto="Registro anônimo editado" if registro.usuarios_id is None else "Registro editado"
     ))
 
     db.commit()
@@ -377,21 +365,17 @@ def obter_registro_por_id(registro_id: int, db: Session = Depends(get_db)):
         "status": registro.status,
         "data_criacao": registro.data_criacao,
         "foto_url": registro.foto_url,
-        
         "latitude": registro.endereco.latitude if registro.endereco else None,
         "longitude": registro.endereco.longitude if registro.endereco else None,
-
         "categoria": {
             "id": registro.categoria.id,
             "nome": registro.categoria.nome
         } if registro.categoria else None,
-
         "usuario": {
             "nome": registro.usuario.nome if registro.usuario else "Não identificado",
             "regiao": getattr(registro.usuario, 'regiao', 'Não informada') if registro.usuario else "Não informada",
             "contribuicoes": getattr(registro.usuario, 'pontuacao', 0) if registro.usuario else 0
         },
-
         "endereco": {
             "logradouro": registro.endereco.logradouro,
             "numero": registro.endereco.numero,

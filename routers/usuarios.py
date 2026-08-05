@@ -2,6 +2,8 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import func
 
+from database import get_db
+
 load_dotenv()
 
 import jwt
@@ -13,8 +15,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import text
 from passlib.context import CryptContext
 from jwt.exceptions import InvalidTokenError
-
-from database import get_db
+from auth import get_current_user, get_current_user_optional
 import models
 import schemas
 import cloudinary
@@ -34,6 +35,28 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "chave_super_secreta_do_tcc_da_vitoria
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme_opcional = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
+
+async def obter_usuario_opcional(
+    token: str = Depends(oauth2_scheme_opcional),
+    db: Session = Depends(get_db)
+):
+    if not token:
+        return None  
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        usuario_id: str = str(payload.get("sub"))
+        
+        if usuario_id is None:
+            return None
+            
+    except InvalidTokenError:
+        return None
+        
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == int(usuario_id)).first()
+    
+    return usuario
 
 def obter_usuario_atual(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     excecao_credenciais = HTTPException(
@@ -303,19 +326,22 @@ async def mudar_senha(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro interno ao atualizar a senha no banco de dados."
-        )
-        
+        )  
+
 @router.get("/ranking")
 def obter_ranking(
+    cidade: str = None, 
     db: Session = Depends(get_db),
-    usuario_atual: models.Usuario = Depends(obter_usuario_atual)
+    usuario_atual: models.Usuario = Depends(get_current_user_optional) 
 ):
     try:
-        cidade_user = usuario_atual.cidade or "Desconhecida"
+        # Recupera a cidade do usuário logado de forma segura (se ele existir)
+        cidade_usuario_logado = usuario_atual.cidade if usuario_atual else None
+        cidade_alvo = cidade or cidade_usuario_logado or "Desconhecida"
         
         usuarios_locais = db.query(models.Usuario).filter(
             models.Usuario.perfil == "user",
-            models.Usuario.cidade == cidade_user
+            models.Usuario.cidade == cidade_alvo
         ).order_by(models.Usuario.pontuacao.desc()).limit(10).all()
         
         lista_local = [
@@ -344,9 +370,9 @@ def obter_ranking(
         return {
             "local": lista_local,
             "global": lista_global,
-            "cidade_usuario": cidade_user
+            "cidade_buscada": cidade_alvo
         }
         
     except Exception as e:
-        print(f"Erro ao buscar ranking: {e}")
+        print(f"Erro ao buscar ranking: {e}") 
         raise HTTPException(status_code=500, detail="Erro interno ao buscar o ranking.")
