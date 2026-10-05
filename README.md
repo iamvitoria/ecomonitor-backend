@@ -1,6 +1,6 @@
 # 🌿 EcoMonitor - Backend API
 
-Bem-vindo(a) ao repositório do backend do **EcoMonitor**! 
+Bem-vindo(a) ao repositório do backend do **UrbanCare**! 
 Esta é uma API RESTful moderna e rápida, desenvolvida como parte do meu Trabalho de Conclusão de Curso (TCC). Ela é responsável por gerenciar toda a regra de negócio, autenticação de usuários e comunicação com o banco de dados da aplicação.
 
 ## 🚀 Tecnologias Utilizadas

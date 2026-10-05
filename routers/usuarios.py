@@ -368,7 +368,7 @@ def obter_ranking(
 ):
     try:
         cidade_usuario_logado = usuario_atual.cidade if usuario_atual else None
-        cidade_alvo = cidade or cidade_usuario_logado or "Desconhecida"
+        cidade_alvo = cidade_usuario_logado or cidade or "Desconhecida"
         
         usuarios_locais = db.query(models.Usuario).filter(
             models.Usuario.perfil == "user",
@@ -401,6 +401,7 @@ def obter_ranking(
         return {
             "local": lista_local,
             "global": lista_global,
+            "cidade_usuario": cidade_usuario_logado,
             "cidade_buscada": cidade_alvo
         }
         
